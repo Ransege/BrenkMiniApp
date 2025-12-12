@@ -7,7 +7,7 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="style.css" />
   <style>
-    /* === АНИМАЦИЯ ЗАГРУЗКИ — КАК В TELEGRAM ПРИ ОБНОВЛЕНИИ */
+
     .loader-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -50,7 +50,7 @@
       50% { opacity: 1; }
     }
 
-    /* Остальные стили (твои старые стили) */
+  
     .price-toggle-btn {
       width: 100%;
       padding: 20px;
@@ -135,7 +135,6 @@
 </head>
 <body>
 
-  <!-- АНИМАЦИЯ ЗАГРУЗКИ -->
   <div id="loader" class="loader-overlay">
     <div class="loader"></div>
     <div class="loader-text">Загрузка Brenk</div>
@@ -192,7 +191,6 @@
         </ul>
       </section>
 
-      <!-- КНОПКА + РАСКРЫВАЮЩИЙСЯ ПРАЙС-ЛИСТ -->
       <div class="price-toggle-btn" id="toggle-price">
         Прайс-лист услуг
       </div>
@@ -239,7 +237,6 @@
   </div>
 
   <script>
-    // === АНИМАЦИЯ ЗАГРУЗКИ + ЛОГИКА КНОПОК ===
     const tg = window.Telegram?.WebApp || { ready:()=>{}, expand:()=>{}, close:()=>window.history.back() };
     tg.ready();
     tg.expand();
@@ -249,12 +246,10 @@
     const priceContainer = document.getElementById('price-container');
     const toggleBtn = document.getElementById('toggle-price');
 
-    // Скрываем загрузку через 1.5 секунды (можно сделать быстрее)
     setTimeout(() => {
       loader.classList.add('hidden');
     }, 1500);
 
-    // Раскрытие прайс-листа
     toggleBtn.onclick = () => {
       const isOpen = priceContainer.classList.contains('open');
       priceContainer.classList.toggle('open', !isOpen);
