@@ -6,13 +6,147 @@
   <title>О BrenkBot</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    /* === АНИМАЦИЯ ЗАГРУЗКИ — КАК В TELEGRAM ПРИ ОБНОВЛЕНИИ */
+    .loader-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #0a0a15;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      opacity: 1;
+      transition: opacity 0.8s ease;
+    }
+    .loader-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .loader {
+      width: 80px;
+      height: 80px;
+      border: 6px solid rgba(138, 43, 226, 0.3);
+      border-top: 6px solid #8a2be2;
+      border-radius: 50%;
+      animation: spin 1.2s linear infinite;
+      box-shadow: 0 0 30px rgba(138, 43, 226, 0.6);
+    }
+    .loader-text {
+      margin-top: 30px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.5em;
+      color: #8a2be2;
+      text-shadow: 0 0 20px #8a2be2;
+      animation: pulse 2s ease infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+
+    /* Остальные стили (твои старые стили) */
+    .price-toggle-btn {
+      width: 100%;
+      padding: 20px;
+      background: linear-gradient(90deg, #ff00ff, #8a2be2);
+      border: 3px solid #8a2be2;
+      color: white;
+      font-size: 1.4em;
+      font-weight: bold;
+      border-radius: 20px;
+      cursor: pointer;
+      text-align: center;
+      margin: 30px 0;
+      box-shadow: 0 0 30px rgba(138, 43, 226, 0.6);
+      transition: all 0.3s ease;
+    }
+    .price-toggle-btn:hover {
+      transform: scale(1.02);
+      box-shadow: 0 0 45px #ff00ff;
+    }
+
+    .price-list-container {
+      overflow: hidden;
+      transition: max-height 0.6s ease, opacity 0.5s ease, padding 0.4s ease;
+      max-height: 0;
+      opacity: 0;
+      padding: 0 20px;
+    }
+    .price-list-container.open {
+      max-height: 2000px;
+      opacity: 1;
+      padding: 30px 20px;
+    }
+
+    .price-list {
+      background: rgba(138, 43, 226, 0.1);
+      border: 1px solid rgba(138, 43, 226, 0.4);
+      border-radius: 20px;
+      padding: 25px;
+      backdrop-filter: blur(10px);
+    }
+
+    .price-item {
+      background: rgba(0,0,0,0.3);
+      border-radius: 15px;
+      padding: 20px;
+      margin: 20px 0;
+      text-align: center;
+      border-left: 4px solid #8a2be2;
+      transition: transform 0.3s;
+    }
+    .price-item:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(138, 43, 226, 0.3);
+    }
+
+    .price-item h3 {
+      color: #00ffff;
+      font-size: 1.5em;
+      margin-bottom: 10px;
+    }
+
+    .price {
+      font-size: 2em;
+      font-weight: bold;
+      color: #ff00ff;
+      margin: 12px 0;
+    }
+
+    .desc {
+      opacity: 0.9;
+      font-size: 1em;
+    }
+
+    .note {
+      text-align: center;
+      margin-top: 30px;
+      font-style: italic;
+      opacity: 0.9;
+      font-size: 1.1em;
+    }
+  </style>
 </head>
 <body>
+
+  <!-- АНИМАЦИЯ ЗАГРУЗКИ -->
+  <div id="loader" class="loader-overlay">
+    <div class="loader"></div>
+    <div class="loader-text">Загрузка Brenk</div>
+  </div>
+
   <div id="app">
     <header>
       <h1>Brenk</h1>
       <p class="subtitle">Telegram-бот · Дизайн · Эстетика</p>
-      <p class="subtitle">Скоро будет добавлен прайс-лист</p>
+      <p class="subtitle">Mini App обновляется...</p>
+      <p class="subtitle">Хотите видеть свои отзывы в Mini App?</p>
     </header>
 
     <main>
@@ -50,14 +184,44 @@
       </section>
 
       <section class="card">
-        <h2>Обновление</h2>
+        <h2>Обновление Mini App</h2>
         <ul>
-          <li>Увеличена скорость ответа от AI</li>
-          <li>Исправлены некоторые ошибки в обработчике кнопок</li>
-          <li>Добавлена Лицензия и Авторство</li>
-          <li>Добавлен Mini App</li>
+          <li>Добавлен прайс-лист</li>
+          <li>Указанные цены не настоящие (это для теста)</li>
+
         </ul>
       </section>
+
+      <!-- КНОПКА + РАСКРЫВАЮЩИЙСЯ ПРАЙС-ЛИСТ -->
+      <div class="price-toggle-btn" id="toggle-price">
+        Прайс-лист услуг
+      </div>
+
+      <div class="price-list-container" id="price-container">
+        <div class="price-list">
+          <div class="price-item">
+            <h3>Логотип</h3>
+            <p class="price">от 15 000 ₽</p>
+            <p class="desc">3 варианта + исходники</p>
+          </div>
+          <div class="price-item">
+            <h3>Фирменный стиль</h3>
+            <p class="price">от 40 000 ₽</p>
+            <p class="desc">Лого + цвета + шрифты + гайд</p>
+          </div>
+          <div class="price-item">
+            <h3>Дизайн постов</h3>
+            <p class="price">от 3 000 ₽ / пост</p>
+            <p class="desc">10 постов = 25 000 ₽</p>
+          </div>
+          <div class="price-item">
+            <h3>Обложки / Баннеры</h3>
+            <p class="price">от 5 000 ₽</p>
+            <p class="desc">Любой формат</p>
+          </div>
+        </div>
+        <p class="note">Заказ? — Пиши @Brenk</p>
+      </div>
 
       <section class="card author">
         <h2>Автор</h2>
@@ -68,16 +232,35 @@
 
       <div class="footer">
         <p>Спасибо, что ты здесь.<br>Оставайся. Со мной не бывает скучно.<br>
-        Eсли есть вопросы или предложения — пиши об этом Brenk. </p>
+        Если есть вопросы или предложения — пиши об этом Brenk.</p>
         <button onclick="Telegram.WebApp.close()">← Назад в чат</button>
       </div>
     </main>
   </div>
+
   <script>
-    const tg = window.Telegram.WebApp;
+    // === АНИМАЦИЯ ЗАГРУЗКИ + ЛОГИКА КНОПОК ===
+    const tg = window.Telegram?.WebApp || { ready:()=>{}, expand:()=>{}, close:()=>window.history.back() };
     tg.ready();
     tg.expand();
+
+    const loader = document.getElementById('loader');
+    const mainScreen = document.getElementById('app');
+    const priceContainer = document.getElementById('price-container');
+    const toggleBtn = document.getElementById('toggle-price');
+
+    // Скрываем загрузку через 1.5 секунды (можно сделать быстрее)
+    setTimeout(() => {
+      loader.classList.add('hidden');
+    }, 1500);
+
+    // Раскрытие прайс-листа
+    toggleBtn.onclick = () => {
+      const isOpen = priceContainer.classList.contains('open');
+      priceContainer.classList.toggle('open', !isOpen);
+      toggleBtn.textContent = isOpen ? 'Прайс-лист услуг' : 'Скрыть прайс-лист ▲';
+      tg.expand();
+    };
   </script>
 </body>
 </html>
-
