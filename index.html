@@ -5,31 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>О BrenkBot</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <style>
-    .hidden { display: none !important; }
-    body { margin: 0; padding: 0; background: #0a0a15; color: #e0d4ff; font-family: 'Segoe UI', sans-serif; min-height: 100vh; }
-    #app { padding: 20px; }
-    header { text-align: center; margin-bottom: 30px; }
-    h1 { font-size: 2.8em; background: linear-gradient(90deg, #ff00ff, #00ffff); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-    .subtitle { opacity: 0.8; margin: 10px 0; }
-    .card { background: rgba(138,43,226,0.15); border: 1px solid #8a2be2; border-radius: 20px; padding: 25px; margin: 20px 0; }
-    .modes .mode { margin: 15px 0; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 15px; }
-    .label { display: inline-block; padding: 6px 16px; border-radius: 30px; font-weight: bold; margin-bottom: 10px; }
-    .label.normal { background: #4a0080; }
-    .label.flirt { background: #d400d4; }
-    .label.crazy { background: #ff0066; }
-    a { color: #00ffff; }
-    .price-button-container { text-align: center; margin: 30px 0; }
-    .neon-btn-big { padding: 18px 40px; font-size: 1.3em; background: linear-gradient(90deg, #ff00ff, #8a2be2); border: 3px solid #8a2be2; color: white; border-radius: 50px; cursor: pointer; box-shadow: 0 0 30px rgba(138,43,226,0.6); font-weight: bold; }
-    .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0a0a15; z-index: 999; padding: 20px; overflow-y: auto; }
-    .price-content { max-width: 500px; margin: 0 auto; text-align: center; }
-    .back-btn { background: none; border: none; color: #8a2be2; font-size: 2em; cursor: pointer; margin-bottom: 20px; }
-    .price-item { background: rgba(138,43,226,0.15); border: 1px solid #8a2be2; border-radius: 20px; padding: 20px; margin: 20px 0; }
-    .price { font-size: 1.8em; font-weight: bold; color: #ff00ff; margin: 10px 0; }
-    .note { margin-top: 40px; font-style: italic; opacity: 0.9; }
-    .footer { text-align: center; margin: 50px 0 30px; }
-    button { cursor: pointer; }
-  </style>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div id="app">
@@ -40,13 +16,6 @@
     </header>
 
     <main>
-      <!-- Кнопка Прайс-лист -->
-      <div class="price-button-container">
-        <button id="open-price" class="neon-btn-big">
-          Прайс-лист услуг
-        </button>
-      </div>
-
       <section class="card">
         <h2>Кто такая Brenk?</h2>
         <p>Я — не просто бот.<br>
@@ -99,70 +68,15 @@
 
       <div class="footer">
         <p>Спасибо, что ты здесь.<br>Оставайся. Со мной не бывает скучно.<br>
-        Если есть вопросы или предложения — пиши об этом Brenk.</p>
+        Eсли есть вопросы или предложения — пиши об этом Brenk. </p>
         <button onclick="Telegram.WebApp.close()">← Назад в чат</button>
       </div>
     </main>
-
-    <!-- ЭКРАН ПРАЙС-ЛИСТА — СКРЫТ ПО УМОЛЧАНИЮ -->
-    <div id="price-screen" class="overlay hidden">
-      <div class="price-content">
-        <button id="back-from-price" class="back-btn">← Назад</button>
-        <h2>Прайс-лист услуг</h2>
-        <div class="price-list">
-          <div class="price-item">
-            <h3>Логотип</h3>
-            <p class="price">от 15 000 ₽</p>
-            <p class="desc">3 варианта + исходники</p>
-          </div>
-          <div class="price-item">
-            <h3>Фирменный стиль</h3>
-            <p class="price">от 40 000 ₽</p>
-            <p class="desc">Лого + цвета + шрифты + гайд</p>
-          </div>
-          <div class="price-item">
-            <h3>Дизайн постов</h3>
-            <p class="price">от 3 000 ₽ / пост</p>
-            <p class="desc">10 постов = 25 000 ₽</p>
-          </div>
-          <div class="price-item">
-            <h3>Обложки / Баннеры</h3>
-            <p class="price">от 5 000 ₽</p>
-            <p class="desc">Любой формат</p>
-          </div>
-        </div>
-        <p class="note">Пиши @rensage — обсудим твой проект</p>
-      </div>
-    </div>
   </div>
-
   <script>
-    // Защита от ошибок вне Telegram
-    const tg = window.Telegram?.WebApp || {
-      ready: () => {},
-      expand: () => {},
-      close: () => window.history.back()
-    };
+    const tg = window.Telegram.WebApp;
     tg.ready();
     tg.expand();
-
-    const mainScreen = document.getElementById('app');
-    const priceScreen = document.getElementById('price-screen');
-    const openPriceBtn = document.getElementById('open-price');
-    const backFromPriceBtn = document.getElementById('back-from-price');
-
-    // ИСПРАВЛЕНО: было priceScreen.classList.classList.remove → теперь правильно!
-    openPriceBtn.onclick = () => {
-      mainScreen.classList.add('hidden');
-      priceScreen.classList.remove('hidden');  // ← Теперь работает!
-      tg.expand();
-    };
-
-    backFromPriceBtn.onclick = () => {
-      priceScreen.classList.add('hidden');
-      mainScreen.classList.remove('hidden');
-    };
   </script>
 </body>
 </html>
-
