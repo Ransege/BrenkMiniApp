@@ -1,12 +1,58 @@
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Inter:wght@300;400;600&display=swap');
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
+
 body {
-  background: linear-gradient(135deg, #0a001a, #1a0033);
-  color: #e0d4ff;
+  background: linear-gradient(135deg, #0a0a15, #0f1e3a); /* тёмный синий градиент */
+  color: #e0f0ff;
   font-family: 'Inter', sans-serif;
   min-height: 100vh;
   padding: 20px;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* === ПАДАЮЩИЕ СНЕЖИНКИ — УМЕНЬШЕННОЕ КОЛИЧЕСТВО === */
+body::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  background: 
+    radial-gradient(circle at 20% 30%, transparent 8px, #90e6ff 9px, transparent 10px),
+    radial-gradient(circle at 60% 70%, transparent 7px, #ffffff 8px, transparent 9px),
+    radial-gradient(circle at 80% 20%, transparent 9px, #e0f0ff 10px, transparent 11px);
+  background-size: 150px 150px, 180px 180px, 160px 160px;
+  background-position: 0 0, 50px 100px, 100px 50px;
+  animation: snowfall 25s linear infinite;
+  opacity: 0.5;
+  z-index: -1;
+}
+
+@keyframes snowfall {
+  0% { background-position: 0 0, 50px 100px, 100px 50px; }
+  100% { background-position: 0 100vh, 50px calc(100px + 100vh), 100px calc(50px + 100vh); }
+}
+
+/* Ещё меньше снежинок — только 2 крупные, медленные */
+body::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  background: 
+    radial-gradient(circle at 40% 50%, transparent 10px, #ffffff 11px, transparent 12px),
+    radial-gradient(circle at 75% 85%, transparent 8px, #90e6ff 9px, transparent 10px);
+  background-size: 200px 200px, 220px 220px;
+  background-position: 0 0, 80px 120px;
+  animation: snowfall-slow 40s linear infinite;
+  opacity: 0.3;
+  z-index: -1;
+}
+
+@keyframes snowfall-slow {
+  0% { background-position: 0 0, 80px 120px; }
+  100% { background-position: 0 100vh, 80px calc(120px + 100vh); }
 }
 
 header {
@@ -14,15 +60,17 @@ header {
   margin-bottom: 40px;
   padding-top: 20px;
 }
+
 h1 {
   font-family: 'Orbitron', sans-serif;
   font-size: 3.5em;
-  background: linear-gradient(90deg, #ff00ff, #00ffff);
+  background: linear-gradient(90deg, #1C8BC0, #90E6FF);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   margin-bottom: 10px;
 }
+
 .subtitle {
   font-size: 1.2em;
   opacity: 0.8;
@@ -30,8 +78,8 @@ h1 {
 }
 
 .card {
-  background: rgba(138, 43, 226, 0.1);
-  border: 1px solid rgba(138, 43, 226, 0.3);
+  background: rgba(13, 110, 253, 0.1);
+  border: 1px solid rgba(13, 110, 253, 0.3);
   border-radius: 20px;
   padding: 25px;
   margin: 20px 0;
@@ -42,7 +90,7 @@ h1 {
   font-family: 'Orbitron', sans-serif;
   font-size: 1.8em;
   margin-bottom: 15px;
-  color: #8a2be2;
+  color: #0d6efd;
   text-align: center;
 }
 
@@ -60,12 +108,12 @@ h1 {
   font-weight: bold;
   margin-bottom: 10px;
 }
-.label.normal { background: #4a0080; }
-.label.flirt  { background: #d400d4; }
-.label.crazy  { background: #ff0066; }
+.label.normal { background: #0a3d62; }
+.label.flirt  { background: #1c8bc0; }
+.label.crazy  { background: #2dbae1; }
 
 ul { line-height: 1.8; padding-left: 20px; }
-a { color: #8a2be2; text-decoration: none; }
+a { color: #90e6ff; text-decoration: none; }
 
 .author {
   text-align: center;
@@ -82,8 +130,8 @@ a { color: #8a2be2; text-decoration: none; }
 .footer button {
   margin-top: 20px;
   padding: 14px 40px;
-  background: rgba(138, 43, 226, 0.4);
-  border: 2px solid #8a2be2;
+  background: rgba(13, 110, 253, 0.4);
+  border: 2px solid #0d6efd;
   color: white;
   border-radius: 50px;
   font-size: 1.1em;
