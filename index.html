@@ -150,7 +150,7 @@
       font-size: 1.1em;
     }
 
-    /* === ТОП КОММЕНТАРИЕВ — АДАПТИВНЫЙ === */
+
     .top-comments h2 {
       font-size: 1.8em;
       color: #8a2be2;
@@ -235,6 +235,14 @@
       line-height: 1.4;
     }
 
+    .titletop {
+      font-size: 1.6em;
+      color: #00ffff;
+      margin-bottom: 15px;
+      font-weight: bold;
+
+    }
+
     @keyframes medalBounce {
       0%, 100% { transform: scale(1); }
       50% { transform: scale(1.1); }
@@ -245,7 +253,7 @@
     @keyframes medalRotate { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(90deg); } 50% { transform: rotate(180deg); } 75% { transform: rotate(270deg); } }
     @keyframes medalPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
 
-    /* === АДАПТИВНОСТЬ (только размеры, без изменения оформления) === */
+ 
     @media (max-width: 600px) {
       .podium {
         flex-direction: column;
@@ -376,7 +384,7 @@
 
       <div class="top-comments-container" id="top-container">
         <div class="top-comments-content">
-          <h2>Топ комментарии от участников</h2>
+          <h2 align="center" class="titletop">Топ комментарии</h2>
 
           <div class="podium">
             <div class="podium-item podium-1">
