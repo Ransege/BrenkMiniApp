@@ -104,6 +104,26 @@
       box-shadow: 0 10px 25px rgba(138, 43, 226, 0.3);
     }
 
+    .price-info {
+      text-align: center;
+      max-width: 300px;
+      margin: 30px auto;
+    }
+    .price-info .title {
+      font-size: 1.6em;
+      color: #8a2be2;
+      margin-bottom: 15px;
+      font-weight: bold;
+    }
+    .price-info .excerpt {
+      text-align: justify;
+      text-align-last: center;
+      line-height: 1.6;
+      font-size: 1.1em;
+      opacity: 0.9;
+      padding: 0 20px;
+    }
+
     .price-item h3 {
       color: #00ffff;
       font-size: 1.5em;
@@ -138,25 +158,24 @@
       text-align: center;
     }
 
-    /* ПЬЕДЕСТАЛ — горизонтально на больших экранах, вертикально на телефонах */
     .podium {
       display: flex;
       justify-content: center;
       gap: 20px;
       margin-bottom: 25px;
-      flex-wrap: wrap; /* Важно для мобильных */
+      flex-wrap: wrap;
     }
     .podium-item {
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-width: 120px;
+      width: 140px;
       padding: 15px;
       background: rgba(0,0,0,0.2);
       border-radius: 18px;
       box-shadow: 0 5px 20px rgba(138, 43, 226, 0.3);
-      flex: 1 1 100px; /* Растягивается на мобильных */
-      max-width: 140px;
+      flex: 1 1 100px;
+      max-width: 160px;
     }
     .medal {
       font-size: 3em;
@@ -184,11 +203,11 @@
       word-break: break-word;
     }
 
-    /* ТОП-10 — 2 столбца на больших, 1 столбец на телефонах */
     .top-10-list {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
       gap: 15px;
+      max-width: 600px;
       margin: 0 auto;
       padding: 0 10px;
     }
@@ -221,14 +240,17 @@
       50% { transform: scale(1.1); }
     }
     .podium-1 .medal { animation-delay: 0s; color: #ffd700; text-shadow: 0 0 20px #ffd700; }
-    .podium-2 .medal { animation-delay: 0.3s; color: #c0c0c0; text-shadow: 0 0 15px #c0c0c0; }
-    .podium-3 .medal { animation-delay: 0.6s; color: #cd7f32; text-shadow: 0 0 10px #cd7f32; }
+    .podium-2 .medal { animation-delay: 0.3s; color: #c0c0c0; text-shadow: 0 0 15px #c0c0c0;}
+    .podium-3 .medal { animation-delay: 0.6s; color: #cd7f32; text-shadow: 0 0 10px #cd7f32; animation: medalPulse 2s ease-in-out infinite; }
+    @keyframes medalRotate { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(90deg); } 50% { transform: rotate(180deg); } 75% { transform: rotate(270deg); } }
+    @keyframes medalPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
 
-    /* === АДАПТИВНОСТЬ === */
-    @media (max-width: 480px) {
+    /* === АДАПТИВНОСТЬ (только размеры, без изменения оформления) === */
+    @media (max-width: 600px) {
       .podium {
         flex-direction: column;
         align-items: center;
+        gap: 15px;
       }
       .podium-item {
         width: 90%;
@@ -237,16 +259,29 @@
       .top-10-list {
         grid-template-columns: 1fr;
       }
-      .price-item, .comment-item {
-        padding: 18px;
+      .price-info {
+        max-width: 100%;
+        padding: 0 15px;
+      }
+      .price-info .excerpt {
+        font-size: 1em;
+        padding: 0 10px;
       }
       h1 { font-size: 2.8em; }
       .subtitle { font-size: 1em; }
+      .price-toggle-btn, .top-comments-toggle-btn { font-size: 1.3em; padding: 18px; }
+    }
+
+    @media (max-width: 400px) {
+      .medal { font-size: 2.5em; }
+      .username-top { font-size: 1em; }
+      .comment-top { font-size: 0.9em; padding: 12px; }
+      .price-item h3 { font-size: 1.4em; }
+      .price { font-size: 1.8em; }
     }
   </style>
 </head>
 <body>
-
   <div id="loader" class="loader-overlay">
     <div class="loader"></div>
     <div class="loader-text">Загрузка Brenk</div>
@@ -256,7 +291,7 @@
     <header>
       <h1>Brenk</h1>
       <p class="subtitle">Telegram-бот · Дизайн · Эстетика</p>
-      <p class="subtitle">Обновление Топ(а) на паузе</p>
+      <p class="subtitle">Обновление Топ(а) на паузе </p>
     </header>
 
     <main>
@@ -343,7 +378,6 @@
         <div class="top-comments-content">
           <h2>Топ комментарии от участников</h2>
 
-          <!-- ПЬЕДЕСТАЛ ТОП-3 -->
           <div class="podium">
             <div class="podium-item podium-1">
               <div class="medal">🥇</div>
@@ -362,7 +396,6 @@
             </div>
           </div>
 
-          <!-- ТОП-10 -->
           <div class="top-10-list">
             <div class="comment-item">
               <div class="username">4. @Пример</div>
