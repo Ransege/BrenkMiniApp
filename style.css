@@ -3,7 +3,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  background: linear-gradient(135deg, #0a0a15, #0f1e3a); /* тёмный синий градиент */
+  background: linear-gradient(135deg, #0a0a15, #0f1e3a);
   color: #e0f0ff;
   font-family: 'Inter', sans-serif;
   min-height: 100vh;
@@ -12,7 +12,6 @@ body {
   overflow-x: hidden;
 }
 
-/* === ПАДАЮЩИЕ СНЕЖИНКИ — УМЕНЬШЕННОЕ КОЛИЧЕСТВО === */
 body::before {
   content: "";
   position: absolute;
@@ -34,7 +33,6 @@ body::before {
   100% { background-position: 0 100vh, 50px calc(100px + 100vh), 100px calc(50px + 100vh); }
 }
 
-/* Ещё меньше снежинок — только 2 крупные, медленные */
 body::after {
   content: "";
   position: absolute;
@@ -58,7 +56,7 @@ body::after {
 header {
   text-align: center;
   margin-bottom: 40px;
-  padding-top: 20px;
+  padding-top: 20px
 }
 
 h1 {
