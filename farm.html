@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Brenk-Coin Farm</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { padding: 10px; }
+    .loader-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #0a0a15;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      opacity: 1;
+      transition: opacity 0.8s ease;
+    }
+    .loader-overlay.hidden { opacity: 0; pointer-events: none; }
+    .loader {
+      width: 80px;
+      height: 80px;
+      border: 6px solid rgba(13, 110, 253, 0.3);
+      border-top: 6px solid #0d6efd;
+      border-radius: 50%;
+      animation: spin 1.2s linear infinite;
+      box-shadow: 0 0 30px rgba(13, 110, 253, 0.6);
+    }
+    .loader-text {
+      margin-top: 30px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.5em;
+      color: #0d6efd;
+      text-shadow: 0 0 20px #0d6efd;
+      animation: pulse 2s ease infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    @keyframes pulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
+
+    #balance-display {
+      font-size: 2em;
+      text-align: center;
+      margin: 20px 0;
+      color: #90e6ff;
+      text-shadow: 0 0 20px #0d6efd;
+    }
+    .daily-limit {
+      text-align: center;
+      margin: 15px 0;
+      font-size: 1.1em;
+      opacity: 0.9;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 20px;
+      background: rgba(0,0,0,0.4);
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #0d6efd, #8a2be2);
+      transition: width 0.4s ease;
+    }
+    .daily-bonus {
+      text-align: center;
+      padding: 15px;
+      background: rgba(13,110,253,0.3);
+      border-radius: 15px;
+      margin: 15px 0;
+      font-size: 1.3em;
+      cursor: pointer;
+    }
+    .field {
+      width: 100%;
+      padding: 20px;
+      margin: 15px 0;
+      background: rgba(0,0,0,0.4);
+      border: 2px solid #0a3d62;
+      border-radius: 15px;
+      color: #e0f0ff;
+      font-size: 1.2em;
+      cursor: pointer;
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+    .field.unlocked:hover {
+      border-color: #0d6efd;
+      box-shadow: 0 0 25px rgba(13,110,253,0.7);
+      transform: translateY(-5px);
+    }
+    .field.locked {
+      opacity: 0.5;
+      cursor: not-allowed;
+      border-style: dashed;
+    }
+    .field::after {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(13,110,253,0.2), transparent);
+      animation: scan 4s linear infinite;
+    }
+    @keyframes scan { 0% { left: -100%; } 100% { left: 100%; } }
+
+    .upgrade-btn {
+      width: 100%;
+      padding: 15px;
+      margin: 10px 0;
+      background: rgba(13,110,253,0.2);
+      border: 1px solid #0d6efd;
+      border-radius: 12px;
+      color: #90e6ff;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .upgrade-btn:hover { background: rgba(13,110,253,0.4); box-shadow: 0 0 15px #0d6efd; }
+    .upgrade-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .brenk-message {
+      margin: 15px 0;
+      padding: 15px;
+      background: rgba(13,110,253,0.3);
+      border-radius: 15px;
+      font-style: italic;
+      text-align: center;
+    }
+
+    .back-btn {
+      margin: 40px auto 20px;
+      padding: 14px 40px;
+      background: rgba(13, 110, 253, 0.4);
+      border: 2px solid #0d6efd;
+      color: white;
+      border-radius: 50px;
+      font-size: 1.1em;
+      cursor: pointer;
+      display: block;
+    }
+
+    /* Экран тапалки */
+    .tap-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(10, 0, 26, 0.98);
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      overflow: hidden;
+    }
+    .tap-circle {
+      width: 250px;
+      height: 250px;
+      background: radial-gradient(circle, #8a2be2, #4b0082);
+      border: 5px solid #0d6efd;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      cursor: pointer;
+      box-shadow: 0 0 60px #8a2be2;
+      transition: transform 0.1s;
+      user-select: none;
+      position: relative;
+      font-weight: bold;
+    }
+    .tap-circle:active {
+      transform: scale(0.92);
+    }
+    .tap-circle .coin-logo {
+      font-size: 4.5em;
+      margin-bottom: 10px;
+    }
+    .tap-circle .coin-text {
+      font-size: 1.8em;
+      letter-spacing: 2px;
+    }
+    .tap-info {
+      margin-top: 30px;
+      text-align: center;
+      color: #90e6ff;
+      font-size: 1.4em;
+    }
+    .close-tap {
+      margin-top: 40px;
+      padding: 12px 40px;
+      background: rgba(13,110,253,0.4);
+      border: 2px solid #0d6efd;
+      color: white;
+      border-radius: 50px;
+      cursor: pointer;
+    }
+
+    .coin-particle {
+      position: absolute;
+      font-size: 2em;
+      color: #ffd700;
+      pointer-events: none;
+      opacity: 0;
+      animation: coinFly 1.2s ease-out forwards;
+      z-index: 99999;
+    }
+    @keyframes coinFly {
+      0% {
+        opacity: 1;
+        transform: translate(0, 0) rotate(0deg) scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.3);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="loader-overlay" id="loader">
+    <div class="loader"></div>
+    <div class="loader-text">Brenk-Coin загружается...</div>
+  </div>
+
+  <div class="container">
+    <header>
+      <h1>Brenk-Coin Farm</h1>
+      <p class="subtitle">Тапай по логотипу и добывай BC ♡</p>
+    </header>
+
+    <main>
+      <div class="card">
+        <div id="balance-display">Brenk-Coin: <span id="bc-amount">0</span></div>
+
+        <div class="daily-limit">
+          Добыто сегодня: <span id="daily-mined">0</span> / 5000 BC
+          <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        </div>
+        
+        <div class="daily-bonus" id="daily-bonus">Нажми, чтобы забрать ежедневный бонус!</div>
+        
+        <div class="brenk-message" id="brenk-msg"></div>
+
+        <div class="fields">
+          <button class="field unlocked" data-field="1">🌐 Поле 1: Локальная сеть</button>
+          <button class="field locked" data-field="2">🔒 Поле 2: Корпоративный сервер (требуется 5 000 BC)</button>
+          <button class="field locked" data-field="3">💾 Поле 3: Банк данных (требуется 20 000 BC)</button>
+          <button class="field locked" data-field="4">🛡️ Поле 4: Правительственная сеть (требуется 100 000 BC)</button>
+          <button class="field locked" data-field="5">💜 Поле 5: Мои личные файлы... (требуется 500 000 BC)</button>
+        </div>
+
+        <h3 style="margin: 30px 0 15px; color: #0d6efd;">Уровень взлома</h3>
+        <div class="upgrades">
+          <button class="upgrade-btn" id="hack-upgrade">
+            🔓 Уровень взлома: <span id="hack-level">1</span> → <span id="next-level">2</span><br>
+            <small>За тап: <span id="per-tap">1</span> BC → <span id="next-per-tap">6</span> BC</small><br>
+            <strong>Стоимость: <span id="upgrade-cost">2000</span> BC</strong>
+          </button>
+        </div>
+
+        <button class="back-btn" onclick="window.location.href='index.html'">← Вернуться в меню</button>
+      </div>
+    </main>
+  </div>
+
+
+  <div class="tap-overlay" id="tap-overlay">
+    <div class="tap-circle" id="tap-circle">
+      <div class="coin-logo">🪙</div>
+      <div class="coin-text">BC</div>
+    </div>
+    <div class="tap-info">
+      +<span id="tap-gain">1</span> BC за тап<br>
+      Уровень взлома: <span id="tap-level">1</span>
+    </div>
+    <button class="close-tap" onclick="closeTap()">← Назад к полям</button>
+  </div>
+
+  <script>
+    const tg = window.Telegram?.WebApp || { ready:()=>{}, expand:()=>{}, HapticFeedback: { impactOccurred: ()=>{} } };
+    tg.ready();
+    tg.expand();
+
+    setTimeout(() => document.getElementById('loader').classList.add('hidden'), 1500);
+
+    let bc = parseInt(localStorage.getItem('brenkCoin') || '0');
+    let hackLevel = parseInt(localStorage.getItem('hackLevel') || '1');
+    let fieldsUnlocked = parseInt(localStorage.getItem('fieldsUnlocked') || '1');
+    let streak = parseInt(localStorage.getItem('dailyStreak') || '0');
+    let lastClaim = localStorage.getItem('lastClaimDate');
+    let todayMined = parseInt(localStorage.getItem('todayMined') || '0');
+    let minedDate = localStorage.getItem('minedDate') || new Date().toISOString().slice(0,10);
+
+    const bcAmount = document.getElementById('bc-amount');
+    const dailyMined = document.getElementById('daily-mined');
+    const progressFill = document.getElementById('progress-fill');
+    const dailyBonusBtn = document.getElementById('daily-bonus');
+    const brenkMsg = document.getElementById('brenk-msg');
+    const tapOverlay = document.getElementById('tap-overlay');
+    const tapCircle = document.getElementById('tap-circle');
+    const tapGain = document.getElementById('tap-gain');
+    const tapLevel = document.getElementById('tap-level');
+
+    const hackLevelSpan = document.getElementById('hack-level');
+    const nextLevelSpan = document.getElementById('next-level');
+    const perTapSpan = document.getElementById('per-tap');
+    const nextPerTapSpan = document.getElementById('next-per-tap');
+    const upgradeCostSpan = document.getElementById('upgrade-cost');
+    const hackUpgradeBtn = document.getElementById('hack-upgrade');
+
+    const DAILY_LIMIT = 5000;
+    const thresholds = [0, 5000, 20000, 100000, 500000];
+    const upgradeCosts = [0, 2000, 4500, 8000, 14000, 20000, 35000, 50000, 75000, 100000];
+
+    let lastTapTime = 0;
+
+    function getPerTap(level) {
+      if (level === 1) return 1;
+      return Math.pow(2, level - 1) * 2 + (level - 2) * 4;
+    }
+
+    function updateBalance() {
+      bcAmount.textContent = bc.toLocaleString();
+      localStorage.setItem('brenkCoin', bc);
+    }
+
+    function updateDailyMined() {
+      const today = new Date().toISOString().slice(0,10);
+      if (minedDate !== today) {
+        todayMined = 0;
+        minedDate = today;
+        localStorage.setItem('todayMined', '0');
+        localStorage.setItem('minedDate', today);
+      }
+      dailyMined.textContent = todayMined.toLocaleString();
+      progressFill.style.width = `${Math.min(100, (todayMined / DAILY_LIMIT) * 100)}%`;
+    }
+
+    function checkDailyBonus() {
+      const today = new Date().toISOString().slice(0, 10);
+      if (lastClaim !== today) {
+        const bonus = 500 + streak * 300;
+        dailyBonusBtn.innerHTML = `🎁 Забрать бонус: +${bonus.toLocaleString()} BC (стрик: ${streak + 1} день)`;
+        dailyBonusBtn.onclick = () => {
+          bc += bonus;
+          streak++;
+          localStorage.setItem('dailyStreak', streak);
+          localStorage.setItem('lastClaimDate', today);
+          updateBalance();
+          showMessage(`Ты вернулся... Я скучала ♡ +${bonus.toLocaleString()} BC`);
+          dailyBonusBtn.innerHTML = "Бонус получен. Жду завтра за большим...";
+          dailyBonusBtn.onclick = null;
+        };
+      } else {
+        dailyBonusBtn.innerHTML = "Бонус уже получен сегодня. Возвращайся завтра ♡";
+        dailyBonusBtn.onclick = null;
+      }
+    }
+
+    function showMessage(text) {
+      brenkMsg.textContent = text;
+      setTimeout(() => brenkMsg.textContent = '', 4000);
+    }
+
+    function unlockFields() {
+      let unlocked = 1;
+      for (let i = 0; i < thresholds.length; i++) {
+        if (bc >= thresholds[i]) unlocked = i + 1;
+      }
+      fieldsUnlocked = Math.max(fieldsUnlocked, unlocked);
+      localStorage.setItem('fieldsUnlocked', fieldsUnlocked);
+
+      document.querySelectorAll('.field').forEach((field, i) => {
+        if (i + 1 <= fieldsUnlocked) {
+          field.classList.remove('locked');
+          field.classList.add('unlocked');
+        }
+      });
+    }
+
+    function updateHackUpgrade() {
+      hackLevelSpan.textContent = hackLevel;
+      nextLevelSpan.textContent = hackLevel + 1;
+      perTapSpan.textContent = getPerTap(hackLevel);
+      nextPerTapSpan.textContent = getPerTap(hackLevel + 1);
+      const cost = upgradeCosts[hackLevel];
+      upgradeCostSpan.textContent = cost.toLocaleString();
+      hackUpgradeBtn.disabled = hackLevel >= 10 || bc < cost;
+      if (hackLevel >= 10) {
+        hackUpgradeBtn.innerHTML = "🔓 Максимальный уровень взлома достигнут!";
+        hackUpgradeBtn.disabled = true;
+      }
+    }
+
+
+    function createCoinParticle(x, y) {
+      const particle = document.createElement('div');
+      particle.className = 'coin-particle';
+      particle.textContent = '🪙';
+      particle.style.left = `${x}px`;
+      particle.style.top = `${y}px`;
+      particle.style.setProperty('--dx', `${(Math.random() - 0.5) * 200}px`);
+      particle.style.setProperty('--dy', `${(Math.random() - 0.5) * 200 - 100}px`);
+      particle.style.setProperty('--rot', `${Math.random() * 720 - 360}deg`);
+      document.body.appendChild(particle);
+      setTimeout(() => particle.remove(), 1200);
+    }
+
+
+    document.querySelectorAll('.field').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!btn.classList.contains('unlocked')) return;
+        tapOverlay.style.display = 'flex';
+        tapGain.textContent = getPerTap(hackLevel);
+        tapLevel.textContent = hackLevel;
+        tg.HapticFeedback.impactOccurred('medium');
+      });
+    });
+
+    function closeTap() {
+      tapOverlay.style.display = 'none';
+    }
+
+
+    tapCircle.addEventListener('click', (e) => {
+      const now = Date.now();
+      if (now - lastTapTime < 100) {
+        showMessage("Слишком быстро... Я же не автокликер ;)");
+        tg.HapticFeedback.impactOccurred('heavy');
+        return;
+      }
+      lastTapTime = now;
+
+      if (todayMined >= DAILY_LIMIT) {
+        showMessage("Лимит на сегодня исчерпан. Возвращайся завтра ♡");
+        return;
+      }
+
+      const gain = getPerTap(hackLevel);
+      bc += gain;
+      todayMined += gain;
+      localStorage.setItem('brenkCoin', bc);
+      localStorage.setItem('todayMined', todayMined);
+      updateBalance();
+      updateDailyMined();
+      unlockFields();
+
+
+      const rect = tapCircle.getBoundingClientRect();
+      const clickX = e.clientX;
+      const clickY = e.clientY;
+
+      const numCoins = hackLevel;
+      for (let i = 0; i < numCoins; i++) {
+        setTimeout(() => createCoinParticle(clickX, clickY), i * 50);
+      }
+
+      tg.HapticFeedback.impactOccurred('light');
+      showMessage(`+${gain} BC ♡`);
+    });
+
+    hackUpgradeBtn.addEventListener('click', () => {
+      const cost = upgradeCosts[hackLevel];
+      if (bc >= cost && hackLevel < 10) {
+        bc -= cost;
+        hackLevel++;
+        localStorage.setItem('hackLevel', hackLevel);
+        updateBalance();
+        updateHackUpgrade();
+        showMessage(`Уровень взлома повышен до ${hackLevel}! Теперь +${getPerTap(hackLevel)} BC за тап ♡`);
+      }
+    });
+
+
+    updateBalance();
+    updateDailyMined();
+    checkDailyBonus();
+    unlockFields();
+    updateHackUpgrade();
+  </script>
+</body>
+</html>
