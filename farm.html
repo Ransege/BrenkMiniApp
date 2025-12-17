@@ -372,7 +372,7 @@
     }
 
     const STORAGE_KEY = `brenkFarm_${userId}`;
-    const API_URL = 'https://10311.dscrd.ru/api/farm'; // ← Обновлённый адрес Valkyrie
+    const API_URL = 'https://10311.dscrd.ru/api/farm';
 
     // === СЕРВЕРНАЯ СИНХРОНИЗАЦИЯ ===
     async function loadFromServer() {
@@ -476,6 +476,7 @@
       unlockFields();
       updateHackUpgrade();
       updateLimitUpgrade();
+      updateResetButtonVisibility(getCurrentLimit()); // ← Добавлено для правильного отображения кнопки при старте
     })();
 
     
@@ -561,12 +562,14 @@
       return `${h ? h + 'ч ' : ''}${m.toString().padStart(2, '0')}м ${s.toString().padStart(2, '0')}с`;
     }
 
+    // === ИСПРАВЛЕННАЯ ФУНКЦИЯ ДЛЯ КНОПКИ "Обновить лимит" ===
     function updateResetButtonVisibility(currentLimit) {
       if (todayMined < currentLimit) {
         resetLimitBtn.style.display = 'none';
         return;
       }
 
+      // Лимит исчерпан — показываем кнопку
       const now = Date.now();
 
       if (resetData.resetsToday >= 3) {
@@ -586,7 +589,6 @@
       }
 
       const nextResetNum = resetData.resetsToday + 1;
-
       let waitTime = 0;
       if (nextResetNum === 2) waitTime = 2 * 60 * 60 * 1000;
       else if (nextResetNum === 3) waitTime = 6 * 60 * 60 * 1000;
@@ -606,7 +608,7 @@
         resetLimitBtn.disabled = false;
       }
 
-      resetLimitBtn.style.display = 'block';
+      resetLimitBtn.style.display = 'block'; // ← Гарантированно показываем при исчерпанном лимите
     }
 
     resetLimitBtn.addEventListener('click', () => {
@@ -805,6 +807,8 @@
 
       tg.HapticFeedback.impactOccurred('light');
       showMessage(`+${gain} BC ♡`);
+
+      saveProgress(); // ← Сохранение после каждого тапа
     });
 
     hackUpgradeBtn.addEventListener('click', () => {
@@ -831,9 +835,7 @@
     });
 
     setInterval(() => {
-      if (resetLimitBtn.style.display === 'block') {
-        updateResetButtonVisibility(getCurrentLimit());
-      }
+      updateResetButtonVisibility(getCurrentLimit()); // ← Обновляем всегда, а не только когда кнопка visible
     }, 1000);
 
     setTimeout(() => document.getElementById('loader').classList.add('hidden'), 1500);
