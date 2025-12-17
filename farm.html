@@ -77,6 +77,34 @@
       font-size: 1.3em;
       cursor: pointer;
     }
+
+    .reset-limit-btn {
+      text-align: center;
+      padding: 12px;
+      background: rgba(13,110,253,0.25);
+      border: 1px solid #0d6efd;
+      border-radius: 15px;
+      margin: 12px 0;
+      font-size: 1.1em;
+      color: #90e6ff;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(13,110,253,0.3);
+      transition: all 0.3s ease;
+      display: none;
+    }
+    .reset-limit-btn:hover:not(:disabled) {
+      background: rgba(13,110,253,0.4);
+      box-shadow: 0 0 25px rgba(13,110,253,0.6);
+      transform: translateY(-2px);
+    }
+    .reset-limit-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      background: rgba(100,100,100,0.2);
+      border-color: #555;
+      box-shadow: none;
+    }
+
     .field {
       width: 100%;
       padding: 20px;
@@ -151,7 +179,6 @@
       display: block;
     }
 
-    /* Экран тапалки с круглой стеклянной сферой */
     .tap-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -201,7 +228,6 @@
       filter: blur(20px);
     }
 
-    /* Анимация пузырей */
     .bubble {
       position: absolute;
       background: rgba(255, 255, 255, 0.4);
@@ -212,17 +238,9 @@
     }
 
     @keyframes bubbleRise {
-      0% {
-        transform: translateY(0) scale(0.5);
-        opacity: 0;
-      }
-      20% {
-        opacity: 0.6;
-      }
-      100% {
-        transform: translateY(-300px) scale(1.2);
-        opacity: 0;
-      }
+      0% { transform: translateY(0) scale(0.5); opacity: 0; }
+      20% { opacity: 0.6; }
+      100% { transform: translateY(-300px) scale(1.2); opacity: 0; }
     }
 
     .tap-info {
@@ -276,7 +294,11 @@
           Добыто сегодня: <span id="daily-mined">0</span> / <span id="daily-limit">5000</span> BC
           <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
         </div>
-        
+
+        <button class="reset-limit-btn" id="reset-limit-btn">
+          🔄 Обновить лимит (бесплатно)
+        </button>
+
         <div class="daily-bonus" id="daily-bonus">Нажми, чтобы забрать ежедневный бонус!</div>
         
         <div class="brenk-message" id="brenk-msg"></div>
@@ -312,7 +334,6 @@
     </main>
   </div>
 
-  <!-- Экран тапалки с круглой сферой -->
   <div class="tap-overlay" id="tap-overlay">
     <div class="glass-sphere" id="tap-circle">
       <div class="liquid" id="liquid"></div>
@@ -325,38 +346,146 @@
   </div>
 
   <script>
-    const tg = window.Telegram?.WebApp || { ready:()=>{}, expand:()=>{}, HapticFeedback: { impactOccurred: ()=>{} } };
+    const tg = window.Telegram.WebApp;
     tg.ready();
     tg.expand();
 
-    setTimeout(() => document.getElementById('loader').classList.add('hidden'), 1500);
+    // === АВТОРИЗАЦИЯ ===
+    const user = tg.initDataUnsafe.user;
+    let userId = 'guest';
 
-    // Безопасный парсинг
-    function safeParseInt(value, def = 0) {
-      const parsed = parseInt(value);
-      return isNaN(parsed) ? def : parsed;
+    if (user && user.id) {
+      userId = user.id;
+      const brenkUser = {
+        id: user.id,
+        username: user.username || 'unknown',
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        is_premium: user.is_premium || false
+      };
+      localStorage.setItem('brenkUser', JSON.stringify(brenkUser));
+    } else {
+      const savedUser = localStorage.getItem('brenkUser');
+      if (savedUser) {
+        userId = JSON.parse(savedUser).id;
+      }
     }
 
-    let bc = safeParseInt(localStorage.getItem('brenkCoin'));
-    let hackLevel = safeParseInt(localStorage.getItem('hackLevel'), 1);
-    let limitLevel = safeParseInt(localStorage.getItem('limitLevel'), 0);
-    let fieldsUnlocked = safeParseInt(localStorage.getItem('fieldsUnlocked'), 1);
-    let streak = safeParseInt(localStorage.getItem('dailyStreak'));
-    let lastClaim = localStorage.getItem('lastClaimDate');
-    let todayMined = safeParseInt(localStorage.getItem('todayMined'));
-    let minedDate = localStorage.getItem('minedDate') || new Date().toISOString().slice(0,10);
+    const STORAGE_KEY = `brenkFarm_${userId}`;
+    const API_URL = 'https://10311.dscrd.ru/api/farm'; // ← Обновлённый адрес от Valkyrie
+
+    // === СЕРВЕРНАЯ СИНХРОНИЗАЦИЯ ===
+    async function loadFromServer() {
+      if (userId === 'guest') return;
+      try {
+        const res = await fetch(`${API_URL}?user_id=${userId}`);
+        if (res.ok) {
+          const data = await res.json();
+          bc = data.balance || 0;
+          hackLevel = data.hack_level || 1;
+          limitLevel = data.limit_level || 0;
+          todayMined = data.today_mined || 0;
+          minedDate = data.mined_date || new Date().toISOString().slice(0,10);
+          streak = data.streak || 0;
+          lastClaim = data.last_claim || null;
+          fieldsUnlocked = data.fields_unlocked || 1;
+          resetData = data.reset_data || { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
+          console.log('Прогресс загружен с сервера');
+        }
+      } catch (e) {
+        console.log('Сервер недоступен — используем локальный прогресс');
+      }
+    }
+
+    async function syncToServer() {
+      if (userId === 'guest') return;
+      const data = {
+        user_id: userId,
+        balance: bc,
+        hack_level: hackLevel,
+        limit_level: limitLevel,
+        today_mined: todayMined,
+        mined_date: minedDate,
+        streak: streak,
+        last_claim: lastClaim,
+        fields_unlocked: fieldsUnlocked,
+        reset_data: resetData
+      };
+      try {
+        await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+      } catch (e) {
+        console.log('Ошибка отправки на сервер — сохранено локально');
+      }
+    }
+
+    // === ЛОКАЛЬНОЕ ХРАНЕНИЕ (fallback) ===
+    function loadProgress() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const data = JSON.parse(saved);
+        bc = data.bc ?? bc;
+        hackLevel = data.hackLevel ?? hackLevel;
+        limitLevel = data.limitLevel ?? limitLevel;
+        todayMined = data.todayMined ?? todayMined;
+        lastReset = data.lastReset ?? lastReset;
+        fieldsUnlocked = data.fieldsUnlocked ?? fieldsUnlocked;
+        streak = data.streak ?? streak;
+        lastClaim = data.lastClaim ?? lastClaim;
+        minedDate = data.minedDate ?? minedDate;
+        resetData = data.resetData ?? resetData;
+      }
+    }
+
+    function saveProgress() {
+      const data = {
+        bc, hackLevel, limitLevel, todayMined, lastReset,
+        fieldsUnlocked, streak, lastClaim, minedDate, resetData
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      syncToServer(); 
+    }
+
+    
+    let bc = 0;
+    let hackLevel = 1;
+    let limitLevel = 0;
+    let fieldsUnlocked = 1;
+    let streak = 0;
+    let lastClaim = null;
+    let todayMined = 0;
+    let minedDate = new Date().toISOString().slice(0,10);
+    let lastReset = Date.now();
+    let resetData = { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
 
     const BASE_LIMIT = 5000;
     const limitIncreases = [0, 2000, 3500, 5000, 7000, 10000];
     const limitCosts = [0, 2000, 5000, 7500, 12000, 25000];
     const hackCosts = [0, 2000, 4500, 8000, 14000, 20000, 35000, 50000, 75000, 100000];
 
+ 
+    (async () => {
+      await loadFromServer();
+      loadProgress();
+      updateBalance();
+      updateDailyMined();
+      checkDailyBonus();
+      unlockFields();
+      updateHackUpgrade();
+      updateLimitUpgrade();
+    })();
+
+    
     const bcAmount = document.getElementById('bc-amount');
     const dailyMined = document.getElementById('daily-mined');
     const dailyLimitSpan = document.getElementById('daily-limit');
     const progressFill = document.getElementById('progress-fill');
     const dailyBonusBtn = document.getElementById('daily-bonus');
     const brenkMsg = document.getElementById('brenk-msg');
+    const resetLimitBtn = document.getElementById('reset-limit-btn');
     const tapOverlay = document.getElementById('tap-overlay');
     const tapCircle = document.getElementById('tap-circle');
     const liquid = document.getElementById('liquid');
@@ -378,6 +507,7 @@
     const limitUpgradeBtn = document.getElementById('limit-upgrade');
 
     let lastTapTime = 0;
+    let bubbleInterval = null;
 
     function getCurrentLimit() {
       let total = BASE_LIMIT;
@@ -394,7 +524,14 @@
 
     function updateBalance() {
       bcAmount.textContent = bc.toLocaleString();
-      localStorage.setItem('brenkCoin', bc);
+      saveProgress();
+    }
+
+    function resetDailyMining() {
+      todayMined = 0;
+      minedDate = new Date().toISOString().slice(0,10);
+      updateDailyMined();
+      saveProgress();
     }
 
     function updateDailyMined() {
@@ -402,9 +539,9 @@
       if (minedDate !== today) {
         todayMined = 0;
         minedDate = today;
-        localStorage.setItem('todayMined', '0');
-        localStorage.setItem('minedDate', today);
+        resetData = { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
       }
+
       dailyMined.textContent = todayMined.toLocaleString();
       const currentLimit = getCurrentLimit();
       dailyLimitSpan.textContent = currentLimit.toLocaleString();
@@ -412,7 +549,85 @@
 
       const fillPercent = 100 - (todayMined / currentLimit) * 100;
       liquid.style.height = `${Math.max(0, fillPercent)}%`;
+
+      updateResetButtonVisibility(currentLimit);
+      saveProgress();
     }
+
+    function formatTime(seconds) {
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = seconds % 60;
+      return `${h ? h + 'ч ' : ''}${m.toString().padStart(2, '0')}м ${s.toString().padStart(2, '0')}с`;
+    }
+
+    function updateResetButtonVisibility(currentLimit) {
+      if (todayMined < currentLimit) {
+        resetLimitBtn.style.display = 'none';
+        return;
+      }
+
+      const now = Date.now();
+
+      if (resetData.resetsToday >= 3) {
+        const timeSinceCycle = now - resetData.cycleStartTime;
+        const cooldown12h = 12 * 60 * 60 * 1000;
+        if (timeSinceCycle < cooldown12h) {
+          const remaining = Math.ceil((cooldown12h - timeSinceCycle) / 1000);
+          resetLimitBtn.textContent = `Жди ${formatTime(remaining)} до новых 3 попыток`;
+          resetLimitBtn.disabled = true;
+          resetLimitBtn.style.display = 'block';
+          return;
+        } else {
+          resetData.resetsToday = 0;
+          resetData.lastResetTime = 0;
+          resetData.cycleStartTime = 0;
+        }
+      }
+
+      const nextResetNum = resetData.resetsToday + 1;
+
+      let waitTime = 0;
+      if (nextResetNum === 2) waitTime = 2 * 60 * 60 * 1000;
+      else if (nextResetNum === 3) waitTime = 6 * 60 * 60 * 1000;
+
+      if (waitTime > 0) {
+        const timeSinceLast = now - resetData.lastResetTime;
+        if (timeSinceLast < waitTime) {
+          const remaining = Math.ceil((waitTime - timeSinceLast) / 1000);
+          resetLimitBtn.textContent = `Жди ${formatTime(remaining)} до ${nextResetNum}-го обновления`;
+          resetLimitBtn.disabled = true;
+        } else {
+          resetLimitBtn.textContent = nextResetNum === 1 ? '🔄 Обновить лимит (бесплатно)' : `🔄 Обновить лимит (${nextResetNum}-е)`;
+          resetLimitBtn.disabled = false;
+        }
+      } else {
+        resetLimitBtn.textContent = '🔄 Обновить лимит (бесплатно)';
+        resetLimitBtn.disabled = false;
+      }
+
+      resetLimitBtn.style.display = 'block';
+    }
+
+    resetLimitBtn.addEventListener('click', () => {
+      if (resetLimitBtn.disabled) return;
+
+      resetDailyMining();
+
+      const now = Date.now();
+      resetData.resetsToday += 1;
+      resetData.lastResetTime = now;
+      if (resetData.resetsToday === 1) {
+        resetData.cycleStartTime = now;
+      }
+
+      saveProgress();
+
+      showMessage(`Лимит обновлён! Это ${resetData.resetsToday}-е сегодня ♡`);
+      tg.HapticFeedback.impactOccurred('soft');
+
+      updateResetButtonVisibility(getCurrentLimit());
+    });
 
     function checkDailyBonus() {
       const today = new Date().toISOString().slice(0, 10);
@@ -422,13 +637,13 @@
         dailyBonusBtn.onclick = () => {
           bc += bonus;
           streak++;
-          localStorage.setItem('dailyStreak', streak);
-          localStorage.setItem('lastClaimDate', today);
+          lastClaim = today;
           updateBalance();
           updateDailyMined();
           showMessage(`Ты вернулся... Я скучала ♡ +${bonus.toLocaleString()} BC`);
           dailyBonusBtn.innerHTML = "Бонус получен. Жду завтра за большим...";
           dailyBonusBtn.onclick = null;
+          saveProgress();
         };
       } else {
         dailyBonusBtn.innerHTML = "Бонус уже получен сегодня. Возвращайся завтра ♡";
@@ -448,7 +663,7 @@
         if (bc >= thresholds[i]) unlocked = i + 1;
       }
       fieldsUnlocked = Math.max(fieldsUnlocked, unlocked);
-      localStorage.setItem('fieldsUnlocked', fieldsUnlocked);
+      saveProgress();
 
       document.querySelectorAll('.field').forEach((field, i) => {
         if (i + 1 <= fieldsUnlocked) {
@@ -507,7 +722,6 @@
       }
     }
 
-    // Создание пузырей
     function createBubble() {
       if (tapOverlay.style.display !== 'flex') return;
       const bubble = document.createElement('div');
@@ -523,14 +737,11 @@
       setTimeout(() => bubble.remove(), 8000);
     }
 
-    // Запуск пузырей
-    let bubbleInterval = null;
     function startBubbles() {
       if (bubbleInterval) clearInterval(bubbleInterval);
       bubbleInterval = setInterval(createBubble, 800);
     }
 
-    // Анимация монеток
     function createCoinParticle(x, y) {
       const particle = document.createElement('div');
       particle.className = 'coin-particle';
@@ -544,7 +755,6 @@
       setTimeout(() => particle.remove(), 1200);
     }
 
-    // Открытие тапалки
     document.querySelectorAll('.field').forEach(btn => {
       btn.addEventListener('click', () => {
         if (!btn.classList.contains('unlocked')) return;
@@ -562,7 +772,6 @@
       document.querySelectorAll('.bubble').forEach(b => b.remove());
     }
 
-    // Тап по сфере
     tapCircle.addEventListener('click', (e) => {
       const now = Date.now();
       if (now - lastTapTime < 100) {
@@ -581,8 +790,6 @@
       const gain = getPerTap(hackLevel);
       bc += gain;
       todayMined += gain;
-      localStorage.setItem('brenkCoin', bc);
-      localStorage.setItem('todayMined', todayMined);
       updateBalance();
       updateDailyMined();
       unlockFields();
@@ -600,38 +807,36 @@
       showMessage(`+${gain} BC ♡`);
     });
 
-    // Апгрейд уровня взлома
     hackUpgradeBtn.addEventListener('click', () => {
       if (hackUpgradeBtn.disabled) return;
       const cost = hackCosts[hackLevel];
       bc -= cost;
       hackLevel++;
-      localStorage.setItem('hackLevel', hackLevel);
       updateBalance();
       updateHackUpgrade();
       showMessage(`Уровень взлома повышен до ${hackLevel}! Теперь +${getPerTap(hackLevel)} BC за тап ♡`);
+      saveProgress();
     });
 
-    // Апгрейд лимита
     limitUpgradeBtn.addEventListener('click', () => {
       if (limitUpgradeBtn.disabled) return;
       const cost = limitCosts[limitLevel + 1];
       bc -= cost;
       limitLevel++;
-      localStorage.setItem('limitLevel', limitLevel);
       updateBalance();
       updateDailyMined();
       updateLimitUpgrade();
       showMessage(`Лимит повышен! Теперь можно добыть до ${getCurrentLimit()} BC в день ♡`);
+      saveProgress();
     });
 
-    // Инициализация
-    updateBalance();
-    updateDailyMined();
-    checkDailyBonus();
-    unlockFields();
-    updateHackUpgrade();
-    updateLimitUpgrade();
+    setInterval(() => {
+      if (resetLimitBtn.style.display === 'block') {
+        updateResetButtonVisibility(getCurrentLimit());
+      }
+    }, 1000);
+
+    setTimeout(() => document.getElementById('loader').classList.add('hidden'), 1500);
   </script>
 </body>
 </html>
