@@ -350,7 +350,7 @@
     tg.ready();
     tg.expand();
 
-    // === АВТОРИЗАЦИЯ ===
+
     const user = tg.initDataUnsafe.user;
     let userId = 'guest';
 
@@ -374,7 +374,7 @@
     const STORAGE_KEY = `brenkFarm_${userId}`;
     const API_URL = 'https://10311.dscrd.ru/api/farm';
 
-    // === СЕРВЕРНАЯ СИНХРОНИЗАЦИЯ ===
+  
     async function loadFromServer() {
       if (userId === 'guest') return;
       try {
@@ -422,7 +422,7 @@
       }
     }
 
-    // === ЛОКАЛЬНОЕ ХРАНЕНИЕ (fallback) ===
+ 
     function loadProgress() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -476,7 +476,7 @@
       unlockFields();
       updateHackUpgrade();
       updateLimitUpgrade();
-      updateResetButtonVisibility(getCurrentLimit()); // ← Добавлено для правильного отображения кнопки при старте
+      updateResetButtonVisibility(getCurrentLimit());
     })();
 
     
@@ -562,14 +562,14 @@
       return `${h ? h + 'ч ' : ''}${m.toString().padStart(2, '0')}м ${s.toString().padStart(2, '0')}с`;
     }
 
-    // === ИСПРАВЛЕННАЯ ФУНКЦИЯ ДЛЯ КНОПКИ "Обновить лимит" ===
+  
     function updateResetButtonVisibility(currentLimit) {
       if (todayMined < currentLimit) {
         resetLimitBtn.style.display = 'none';
         return;
       }
 
-      // Лимит исчерпан — показываем кнопку
+    
       const now = Date.now();
 
       if (resetData.resetsToday >= 3) {
@@ -608,7 +608,7 @@
         resetLimitBtn.disabled = false;
       }
 
-      resetLimitBtn.style.display = 'block'; // ← Гарантированно показываем при исчерпанном лимите
+      resetLimitBtn.style.display = 'block';
     }
 
     resetLimitBtn.addEventListener('click', () => {
@@ -808,7 +808,7 @@
       tg.HapticFeedback.impactOccurred('light');
       showMessage(`+${gain} BC ♡`);
 
-      saveProgress(); // ← Сохранение после каждого тапа
+      saveProgress();
     });
 
     hackUpgradeBtn.addEventListener('click', () => {
@@ -835,7 +835,7 @@
     });
 
     setInterval(() => {
-      updateResetButtonVisibility(getCurrentLimit()); // ← Обновляем всегда, а не только когда кнопка visible
+      updateResetButtonVisibility(getCurrentLimit());
     }, 1000);
 
     setTimeout(() => document.getElementById('loader').classList.add('hidden'), 1500);
