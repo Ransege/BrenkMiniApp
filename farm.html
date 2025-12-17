@@ -167,6 +167,26 @@
       text-align: center;
     }
 
+    .sync-notice {
+      text-align: center;
+      padding: 12px;
+      background: rgba(13,110,253,0.3);
+      border-radius: 15px;
+      margin: 15px 0;
+      font-size: 1.1em;
+      color: #90e6ff;
+    }
+
+    .sync-btn {
+      margin-top: 10px;
+      padding: 10px 20px;
+      background: rgba(13,110,253,0.4);
+      border: 1px solid #0d6efd;
+      border-radius: 12px;
+      color: white;
+      cursor: pointer;
+    }
+
     .back-btn {
       margin: 40px auto 20px;
       padding: 14px 40px;
@@ -288,6 +308,9 @@
 
     <main>
       <div class="card">
+        <!-- Новое уведомление о синхронизации -->
+        <div class="sync-notice" id="sync-notice"></div>
+
         <div id="balance-display">Brenk-Coin: <span id="bc-amount">0</span></div>
 
         <div class="daily-limit">
@@ -350,7 +373,7 @@
     tg.ready();
     tg.expand();
 
-
+    // === АВТОРИЗАЦИЯ ===
     const user = tg.initDataUnsafe.user;
     let userId = 'guest';
 
@@ -374,27 +397,28 @@
     const STORAGE_KEY = `brenkFarm_${userId}`;
     const API_URL = 'https://10311.dscrd.ru/api/farm';
 
-  
+    // === СЕРВЕРНАЯ СИНХРОНИЗАЦИЯ ===
     async function loadFromServer() {
-      if (userId === 'guest') return;
+      if (userId === 'guest') return false;
       try {
         const res = await fetch(`${API_URL}?user_id=${userId}`);
         if (res.ok) {
           const data = await res.json();
-          bc = data.balance || 0;
-          hackLevel = data.hack_level || 1;
-          limitLevel = data.limit_level || 0;
-          todayMined = data.today_mined || 0;
-          minedDate = data.mined_date || new Date().toISOString().slice(0,10);
-          streak = data.streak || 0;
-          lastClaim = data.last_claim || null;
-          fieldsUnlocked = data.fields_unlocked || 1;
-          resetData = data.reset_data || { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
-          console.log('Прогресс загружен с сервера');
+          bc = data.balance ?? 0;
+          hackLevel = data.hack_level ?? 1;
+          limitLevel = data.limit_level ?? 0;
+          todayMined = data.today_mined ?? 0;
+          minedDate = data.mined_date ?? new Date().toISOString().slice(0,10);
+          streak = data.streak ?? 0;
+          lastClaim = data.last_claim ?? null;
+          fieldsUnlocked = data.fields_unlocked ?? 1;
+          resetData = data.reset_data ?? { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
+          return true;
         }
       } catch (e) {
-        console.log('Сервер недоступен — используем локальный прогресс');
+        console.log('Сервер недоступен', e);
       }
+      return false;
     }
 
     async function syncToServer() {
@@ -418,11 +442,10 @@
           body: JSON.stringify(data)
         });
       } catch (e) {
-        console.log('Ошибка отправки на сервер — сохранено локально');
+        console.log('Ошибка отправки', e);
       }
     }
 
- 
     function loadProgress() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -446,10 +469,10 @@
         fieldsUnlocked, streak, lastClaim, minedDate, resetData
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      syncToServer(); 
+      syncToServer();
     }
 
-    
+    // === ПЕРЕМЕННЫЕ ===
     let bc = 0;
     let hackLevel = 1;
     let limitLevel = 0;
@@ -466,10 +489,21 @@
     const limitCosts = [0, 2000, 5000, 7500, 12000, 25000];
     const hackCosts = [0, 2000, 4500, 8000, 14000, 20000, 35000, 50000, 75000, 100000];
 
- 
+    // === ИНИЦИАЛИЗАЦИЯ ===
     (async () => {
-      await loadFromServer();
-      loadProgress();
+      const serverLoaded = await loadFromServer();
+      const syncNotice = document.getElementById('sync-notice');
+
+      if (serverLoaded) {
+        syncNotice.innerHTML = '🌐 Прогресс синхронизирован с облаком ♡';
+      } else {
+        loadProgress();
+        syncNotice.innerHTML = `
+          ⚠️ Загружен локальный прогресс (сервер недоступен или первый вход)<br>
+          <button class="sync-btn" onclick="forceSyncAndReload()">Сохранить на сервер и перезагрузить</button>
+        `;
+      }
+
       updateBalance();
       updateDailyMined();
       checkDailyBonus();
@@ -479,7 +513,14 @@
       updateResetButtonVisibility(getCurrentLimit());
     })();
 
-    
+    // Функция для ручной синхронизации и перезагрузки
+    function forceSyncAndReload() {
+      saveProgress();
+      showMessage('Прогресс отправлен на сервер! Перезагружаю...');
+      setTimeout(() => location.reload(), 1500);
+    }
+
+    // === ЭЛЕМЕНТЫ ===
     const bcAmount = document.getElementById('bc-amount');
     const dailyMined = document.getElementById('daily-mined');
     const dailyLimitSpan = document.getElementById('daily-limit');
@@ -562,14 +603,12 @@
       return `${h ? h + 'ч ' : ''}${m.toString().padStart(2, '0')}м ${s.toString().padStart(2, '0')}с`;
     }
 
-  
     function updateResetButtonVisibility(currentLimit) {
       if (todayMined < currentLimit) {
         resetLimitBtn.style.display = 'none';
         return;
       }
 
-    
       const now = Date.now();
 
       if (resetData.resetsToday >= 3) {
@@ -697,6 +736,7 @@
         `;
         hackUpgradeBtn.disabled = false;
       }
+      saveProgress();
     }
 
     function updateLimitUpgrade() {
@@ -722,6 +762,7 @@
         `;
         limitUpgradeBtn.disabled = false;
       }
+      saveProgress();
     }
 
     function createBubble() {
