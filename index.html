@@ -69,7 +69,6 @@
       box-shadow: 0 0 45px #0d6efd;
     }
 
-    
     .farm-entry-btn {
       background: linear-gradient(90deg, #8a2be2, #4b0082);
       border-color: #8a2be2;
@@ -160,7 +159,6 @@
       font-size: 1.1em;
     }
 
-
     .top-comments h2 {
       font-size: 1.8em;
       color: #0d6efd;
@@ -250,7 +248,6 @@
       color: #00ffff;
       margin-bottom: 15px;
       font-weight: bold;
-
     }
 
     @keyframes medalBounce {
@@ -477,10 +474,30 @@
   </div>
 
   <script>
-    const tg = window.Telegram?.WebApp || { ready:()=>{}, expand:()=>{}, close:()=>window.history.back() };
+
+    const tg = window.Telegram.WebApp;
     tg.ready();
     tg.expand();
 
+    const user = tg.initDataUnsafe.user;
+
+    if (user && user.id) {
+
+      const brenkUser = {
+        id: user.id,
+        username: user.username || 'unknown',
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        is_premium: user.is_premium || false
+      };
+      localStorage.setItem('brenkUser', JSON.stringify(brenkUser));
+      console.log('Пользователь сохранён:', brenkUser);
+    } else {
+
+      console.warn('Пользователь не авторизован через Telegram WebApp');
+    }
+
+ 
     const loader = document.getElementById('loader');
     const priceContainer = document.getElementById('price-container');
     const togglePriceBtn = document.getElementById('toggle-price');
