@@ -167,26 +167,6 @@
       text-align: center;
     }
 
-    .sync-notice {
-      text-align: center;
-      padding: 12px;
-      background: rgba(13,110,253,0.3);
-      border-radius: 15px;
-      margin: 15px 0;
-      font-size: 1.1em;
-      color: #90e6ff;
-    }
-
-    .sync-btn {
-      margin-top: 10px;
-      padding: 10px 20px;
-      background: rgba(13,110,253,0.4);
-      border: 1px solid #0d6efd;
-      border-radius: 12px;
-      color: white;
-      cursor: pointer;
-    }
-
     .back-btn {
       margin: 40px auto 20px;
       padding: 14px 40px;
@@ -308,9 +288,6 @@
 
     <main>
       <div class="card">
-        <!-- Новое уведомление о синхронизации -->
-        <div class="sync-notice" id="sync-notice"></div>
-
         <div id="balance-display">Brenk-Coin: <span id="bc-amount">0</span></div>
 
         <div class="daily-limit">
@@ -395,30 +372,29 @@
     }
 
     const STORAGE_KEY = `brenkFarm_${userId}`;
-    const API_URL = 'https://10311.dscrd.ru/api/farm';
+    const API_URL = 'https://10311.dscrd.ru/api/farm'; // ← Обновлённый адрес от Valkyrie
 
     // === СЕРВЕРНАЯ СИНХРОНИЗАЦИЯ ===
     async function loadFromServer() {
-      if (userId === 'guest') return false;
+      if (userId === 'guest') return;
       try {
         const res = await fetch(`${API_URL}?user_id=${userId}`);
         if (res.ok) {
           const data = await res.json();
-          bc = data.balance ?? 0;
-          hackLevel = data.hack_level ?? 1;
-          limitLevel = data.limit_level ?? 0;
-          todayMined = data.today_mined ?? 0;
-          minedDate = data.mined_date ?? new Date().toISOString().slice(0,10);
-          streak = data.streak ?? 0;
-          lastClaim = data.last_claim ?? null;
-          fieldsUnlocked = data.fields_unlocked ?? 1;
-          resetData = data.reset_data ?? { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
-          return true;
+          bc = data.balance || 0;
+          hackLevel = data.hack_level || 1;
+          limitLevel = data.limit_level || 0;
+          todayMined = data.today_mined || 0;
+          minedDate = data.mined_date || new Date().toISOString().slice(0,10);
+          streak = data.streak || 0;
+          lastClaim = data.last_claim || null;
+          fieldsUnlocked = data.fields_unlocked || 1;
+          resetData = data.reset_data || { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
+          console.log('Прогресс загружен с сервера');
         }
       } catch (e) {
-        console.log('Сервер недоступен', e);
+        console.log('Сервер недоступен — используем локальный прогресс');
       }
-      return false;
     }
 
     async function syncToServer() {
@@ -435,17 +411,23 @@
         fields_unlocked: fieldsUnlocked,
         reset_data: resetData
       };
+
+      console.log('Отправляю на сервер:', data);  // ← Логируем отправляемые данные
+
       try {
-        await fetch(API_URL, {
+        const res = await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         });
+        const responseData = await res.json();
+        console.log('Ответ сервера:', res.status, responseData);  // ← Логируем статус и ответ
       } catch (e) {
-        console.log('Ошибка отправки', e);
+        console.log('Ошибка отправки на сервер — сохранено локально', e);
       }
     }
 
+    // === ЛОКАЛЬНОЕ ХРАНЕНИЕ (fallback) ===
     function loadProgress() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -469,10 +451,10 @@
         fieldsUnlocked, streak, lastClaim, minedDate, resetData
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      syncToServer();
+      syncToServer(); 
     }
 
-    // === ПЕРЕМЕННЫЕ ===
+    
     let bc = 0;
     let hackLevel = 1;
     let limitLevel = 0;
@@ -489,38 +471,19 @@
     const limitCosts = [0, 2000, 5000, 7500, 12000, 25000];
     const hackCosts = [0, 2000, 4500, 8000, 14000, 20000, 35000, 50000, 75000, 100000];
 
-    // === ИНИЦИАЛИЗАЦИЯ ===
+ 
     (async () => {
-      const serverLoaded = await loadFromServer();
-      const syncNotice = document.getElementById('sync-notice');
-
-      if (serverLoaded) {
-        syncNotice.innerHTML = '🌐 Прогресс синхронизирован с облаком ♡';
-      } else {
-        loadProgress();
-        syncNotice.innerHTML = `
-          ⚠️ Загружен локальный прогресс (сервер недоступен или первый вход)<br>
-          <button class="sync-btn" onclick="forceSyncAndReload()">Сохранить на сервер и перезагрузить</button>
-        `;
-      }
-
+      await loadFromServer();
+      loadProgress();
       updateBalance();
       updateDailyMined();
       checkDailyBonus();
       unlockFields();
       updateHackUpgrade();
       updateLimitUpgrade();
-      updateResetButtonVisibility(getCurrentLimit());
     })();
 
-    // Функция для ручной синхронизации и перезагрузки
-    function forceSyncAndReload() {
-      saveProgress();
-      showMessage('Прогресс отправлен на сервер! Перезагружаю...');
-      setTimeout(() => location.reload(), 1500);
-    }
-
-    // === ЭЛЕМЕНТЫ ===
+    
     const bcAmount = document.getElementById('bc-amount');
     const dailyMined = document.getElementById('daily-mined');
     const dailyLimitSpan = document.getElementById('daily-limit');
@@ -628,6 +591,7 @@
       }
 
       const nextResetNum = resetData.resetsToday + 1;
+
       let waitTime = 0;
       if (nextResetNum === 2) waitTime = 2 * 60 * 60 * 1000;
       else if (nextResetNum === 3) waitTime = 6 * 60 * 60 * 1000;
@@ -736,7 +700,6 @@
         `;
         hackUpgradeBtn.disabled = false;
       }
-      saveProgress();
     }
 
     function updateLimitUpgrade() {
@@ -762,7 +725,6 @@
         `;
         limitUpgradeBtn.disabled = false;
       }
-      saveProgress();
     }
 
     function createBubble() {
@@ -848,8 +810,6 @@
 
       tg.HapticFeedback.impactOccurred('light');
       showMessage(`+${gain} BC ♡`);
-
-      saveProgress();
     });
 
     hackUpgradeBtn.addEventListener('click', () => {
@@ -876,7 +836,9 @@
     });
 
     setInterval(() => {
-      updateResetButtonVisibility(getCurrentLimit());
+      if (resetLimitBtn.style.display === 'block') {
+        updateResetButtonVisibility(getCurrentLimit());
+      }
     }, 1000);
 
     setTimeout(() => document.getElementById('loader').classList.add('hidden'), 1500);
