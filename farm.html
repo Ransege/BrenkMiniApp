@@ -168,7 +168,7 @@
     }
 
     .back-btn {
-      margin: 20px auto 20px;
+      margin: 40px auto 20px;
       padding: 14px 40px;
       background: rgba(13, 110, 253, 0.4);
       border: 2px solid #0d6efd;
@@ -177,27 +177,6 @@
       font-size: 1.1em;
       cursor: pointer;
       display: block;
-    }
-
-    /* Кнопка лидерборда */
-    .leaderboard-btn {
-      margin: 20px auto 10px;
-      padding: 14px 40px;
-      background: linear-gradient(135deg, rgba(138,43,226,0.4), rgba(13,110,253,0.4));
-      border: 2px solid #8a2be2;
-      color: white;
-      border-radius: 50px;
-      font-size: 1.1em;
-      cursor: pointer;
-      display: block;
-      text-align: center;
-      box-shadow: 0 0 20px rgba(138,43,226,0.4);
-      transition: all 0.3s ease;
-    }
-    .leaderboard-btn:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 0 30px rgba(138,43,226,0.7);
-      background: linear-gradient(135deg, rgba(138,43,226,0.6), rgba(13,110,253,0.6));
     }
 
     .tap-overlay {
@@ -335,61 +314,6 @@
       border: 1px solid #90e6ff;
       color: #90e6ff;
     }
-
-    /* Модальное окно для никнейма */
-    #nickname-modal {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.95);
-      display: none;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 10001;
-      padding: 20px;
-      text-align: center;
-      color: white;
-    }
-    #nickname-modal h2 {
-      color: #0d6efd;
-      margin-bottom: 20px;
-      font-size: 1.8em;
-    }
-    #nickname-modal input {
-      padding: 15px;
-      width: 80%;
-      max-width: 300px;
-      border-radius: 15px;
-      border: 1px solid #0d6efd;
-      background: rgba(255,255,255,0.1);
-      color: white;
-      font-size: 1.2em;
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    #nickname-modal button {
-      padding: 15px 40px;
-      background: #0d6efd;
-      border: none;
-      border-radius: 15px;
-      color: white;
-      font-size: 1.2em;
-      cursor: pointer;
-    }
-
-    .nickname-display {
-      text-align: center;
-      margin: 10px 0;
-    }
-    .nickname-display button {
-      padding: 10px 20px;
-      background: rgba(13,110,253,0.3);
-      border: 1px solid #0d6efd;
-      border-radius: 12px;
-      color: #90e6ff;
-      font-size: 1em;
-      cursor: pointer;
-    }
   </style>
 </head>
 <body>
@@ -398,13 +322,7 @@
     <div class="loader-text">Brenk-Coin загружается...</div>
   </div>
 
-  <div id="nickname-modal">
-    <h2>Выбери свой никнейм ♡</h2>
-    <p>Он будет виден в лидерборде</p>
-    <input type="text" id="nickname-input" placeholder="Введи ник (до 20 символов)" maxlength="20" />
-    <button onclick="saveNicknameAndContinue()">Сохранить и начать</button>
-  </div>
-
+  <!-- МОДАЛЬНОЕ ОКНО СИНХРОНИЗАЦИИ -->
   <div id="sync-modal">
     <h2>Обнаружен сохранённый прогресс!</h2>
     <p>На сервере найден прогресс:<br>
@@ -425,10 +343,6 @@
 
     <main>
       <div class="card">
-        <div class="nickname-display">
-          <button onclick="showNicknameModal()">Ник: <span id="current-nickname">Не установлен</span> ✏️</button>
-        </div>
-
         <div id="balance-display">Brenk-Coin: <span id="bc-amount">0</span></div>
 
         <div class="daily-limit">
@@ -470,11 +384,6 @@
           </button>
         </div>
 
-        <!-- КНОПКА ЛИДЕРБОРДА -->
-        <button class="leaderboard-btn" onclick="window.location.href='leaderboard.html'">
-          🏆 Лидерборд топ-10
-        </button>
-
         <button class="back-btn" onclick="window.location.href='index.html'">← Вернуться в меню</button>
       </div>
     </main>
@@ -496,6 +405,7 @@
     tg.ready();
     tg.expand();
 
+    // === АВТОРИЗАЦИЯ ===
     const user = tg.initDataUnsafe.user;
     let userId = 'guest';
 
@@ -519,36 +429,7 @@
     const STORAGE_KEY = `brenkFarm_${userId}`;
     const API_URL = 'https://10311.dscrd.ru/api/farm';
 
-    let playerNickname = 'Игрок';
-
-    function loadNickname() {
-      const saved = localStorage.getItem('brenkNickname');
-      if (saved) {
-        playerNickname = saved;
-      } else {
-        playerNickname = 'Игрок';
-      }
-      document.getElementById('current-nickname').textContent = playerNickname;
-    }
-
-    function saveNicknameAndContinue() {
-      let input = document.getElementById('nickname-input').value.trim();
-      if (input === '') input = 'Игрок';
-      if (input.length > 20) input = input.slice(0, 20);
-
-      playerNickname = input;
-      localStorage.setItem('brenkNickname', playerNickname);
-      document.getElementById('current-nickname').textContent = playerNickname;
-      document.getElementById('nickname-modal').style.display = 'none';
-
-      continueInitialization();
-    }
-
-    function showNicknameModal() {
-      document.getElementById('nickname-input').value = playerNickname;
-      document.getElementById('nickname-modal').style.display = 'flex';
-    }
-
+    // === ПЕРЕМЕННЫЕ ===
     let bc = 0;
     let hackLevel = 1;
     let limitLevel = 0;
@@ -565,18 +446,13 @@
     const limitCosts = [0, 2000, 5000, 7500, 12000, 25000];
     const hackCosts = [0, 2000, 4500, 8000, 14000, 20000, 35000, 50000, 75000, 100000];
 
+    // === СЕРВЕРНАЯ СИНХРОНИЗАЦИЯ ===
     async function loadFromServer() {
       if (userId === 'guest') return null;
       try {
         const res = await fetch(`${API_URL}?user_id=${userId}`);
         if (res.ok) {
-          const data = await res.json();
-          if (data.nickname) {
-            playerNickname = data.nickname;
-            localStorage.setItem('brenkNickname', playerNickname);
-            document.getElementById('current-nickname').textContent = playerNickname;
-          }
-          return data;
+          return await res.json();
         }
       } catch (e) {
         console.log('Сервер недоступен');
@@ -596,8 +472,7 @@
         streak: streak,
         last_claim: lastClaim,
         fields_unlocked: fieldsUnlocked,
-        reset_data: resetData,
-        nickname: playerNickname 
+        reset_data: resetData
       };
 
       try {
@@ -611,6 +486,7 @@
       }
     }
 
+    // === ЛОКАЛЬНОЕ ХРАНЕНИЕ ===
     function loadLocalProgress() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -663,47 +539,42 @@
       setTimeout(() => msg.textContent = '', 4000);
     }
 
-    async function continueInitialization() {
+    // === АВТОМАТИЧЕСКАЯ ПРОВЕРКА ПРИ ЗАПУСКЕ ===
+    (async () => {
       const serverData = await loadFromServer();
 
+      // Если на сервере есть прогресс с балансом > 0
       if (serverData && (serverData.balance > 0 || serverData.today_mined > 0)) {
-        loadLocalProgress();
+        loadLocalProgress(); // Загружаем локальный для сравнения
 
+        // Если локальный баланс меньше серверного или его нет
         if (bc < (serverData.balance || 0)) {
           document.getElementById('server-balance').textContent = (serverData.balance || 0).toLocaleString();
           document.getElementById('server-mined').textContent = (serverData.today_mined || 0).toLocaleString();
           document.getElementById('sync-modal').style.display = 'flex';
           document.getElementById('loader').classList.add('hidden');
+
+          // Сохраняем серверные данные для использования в кнопках
           window.serverProgress = serverData;
           return;
         }
       }
 
-      if (!serverData || bc >= (serverData?.balance || 0)) {
+      // Если серверный прогресс не актуальнее — используем локальный
+      if (!serverData || bc >= (serverData.balance || 0)) {
         loadLocalProgress();
       }
 
+      // Применяем прогресс и запускаем игру
       applyProgress({ balance: bc, hack_level: hackLevel, limit_level: limitLevel, today_mined: todayMined, mined_date: minedDate, streak: streak, last_claim: lastClaim, fields_unlocked: fieldsUnlocked, reset_data: resetData });
 
       document.getElementById('loader').classList.add('hidden');
-    }
-
-    (async () => {
-      loadNickname();
-
-      const hasLocalProgress = localStorage.getItem(STORAGE_KEY) !== null;
-
-      if (!hasLocalProgress) {
-        document.getElementById('nickname-modal').style.display = 'flex';
-        document.getElementById('loader').classList.add('hidden');
-      } else {
-        continueInitialization();
-      }
     })();
 
+    // === ФУНКЦИИ МОДАЛЬНОГО ОКНА ===
     function loadServerProgress() {
       applyProgress(window.serverProgress);
-      saveProgress();
+      saveProgress(); // Сохраняем серверный как локальный
       showMessage("Прогресс загружен с сервера ♡");
       document.getElementById('sync-modal').style.display = 'none';
     }
@@ -713,7 +584,9 @@
       document.getElementById('sync-modal').style.display = 'none';
     }
 
-    // === ВСЯ ИГРОВАЯ ЛОГИКА (без изменений) ===
+    // === ОСТАЛЬНОЙ КОД (без изменений) ===
+    // (все функции: getCurrentLimit, updateBalance, tapCircle, и т.д. — оставлены как в твоём оригинале)
+
     const bcAmount = document.getElementById('bc-amount');
     const dailyMined = document.getElementById('daily-mined');
     const dailyLimitSpan = document.getElementById('daily-limit');
