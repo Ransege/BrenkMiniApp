@@ -273,26 +273,46 @@
       100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.3); }
     }
 
-  
-    .sync-btn {
+    /* Модальное окно синхронизации */
+    #sync-modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.95);
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+      padding: 20px;
       text-align: center;
-      margin: 15px 0;
+      color: white;
     }
-    .sync-btn button {
-      padding: 12px 24px;
-      background: rgba(13,110,253,0.35);
-      border: 1px solid #0d6efd;
+    #sync-modal h2 {
+      color: #0d6efd;
+      margin-bottom: 20px;
+      font-size: 1.8em;
+    }
+    #sync-modal p {
+      font-size: 1.4em;
+      margin-bottom: 30px;
+    }
+    #sync-modal button {
+      padding: 15px 30px;
+      margin: 10px;
       border-radius: 15px;
-      color: #90e6ff;
-      font-size: 1.1em;
+      font-size: 1.2em;
       cursor: pointer;
-      box-shadow: 0 0 15px rgba(13,110,253,0.3);
-      transition: all 0.3s ease;
+      min-width: 200px;
     }
-    .sync-btn button:hover {
-      background: rgba(13,110,253,0.5);
-      box-shadow: 0 0 25px rgba(13,110,253,0.6);
-      transform: translateY(-2px);
+    #sync-modal button:first-child {
+      background: #0d6efd;
+      border: none;
+      color: white;
+    }
+    #sync-modal button:last-child {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid #90e6ff;
+      color: #90e6ff;
     }
   </style>
 </head>
@@ -300,6 +320,19 @@
   <div class="loader-overlay" id="loader">
     <div class="loader"></div>
     <div class="loader-text">Brenk-Coin загружается...</div>
+  </div>
+
+  <!-- МОДАЛЬНОЕ ОКНО СИНХРОНИЗАЦИИ -->
+  <div id="sync-modal">
+    <h2>Обнаружен сохранённый прогресс!</h2>
+    <p>На сервере найден прогресс:<br>
+       <strong><span id="server-balance">0</span> BC</strong><br>
+       Добыто сегодня: <span id="server-mined">0</span> BC
+    </p>
+    <div>
+      <button onclick="loadServerProgress()">Загрузить с сервера ♡</button>
+      <button onclick="continueLocal()">Продолжить локально</button>
+    </div>
   </div>
 
   <div class="container">
@@ -310,11 +343,6 @@
 
     <main>
       <div class="card">
-      
-        <div class="sync-btn">
-          <button onclick="forceSyncFromServer()">🔄 Синхронизировать с сервером</button>
-        </div>
-
         <div id="balance-display">Brenk-Coin: <span id="bc-amount">0</span></div>
 
         <div class="daily-limit">
@@ -377,7 +405,7 @@
     tg.ready();
     tg.expand();
 
-  
+    // === АВТОРИЗАЦИЯ ===
     const user = tg.initDataUnsafe.user;
     let userId = 'guest';
 
@@ -401,27 +429,35 @@
     const STORAGE_KEY = `brenkFarm_${userId}`;
     const API_URL = 'https://10311.dscrd.ru/api/farm';
 
+    // === ПЕРЕМЕННЫЕ ===
+    let bc = 0;
+    let hackLevel = 1;
+    let limitLevel = 0;
+    let fieldsUnlocked = 1;
+    let streak = 0;
+    let lastClaim = null;
+    let todayMined = 0;
+    let minedDate = new Date().toISOString().slice(0,10);
+    let lastReset = Date.now();
+    let resetData = { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
 
+    const BASE_LIMIT = 5000;
+    const limitIncreases = [0, 2000, 3500, 5000, 7000, 10000];
+    const limitCosts = [0, 2000, 5000, 7500, 12000, 25000];
+    const hackCosts = [0, 2000, 4500, 8000, 14000, 20000, 35000, 50000, 75000, 100000];
+
+    // === СЕРВЕРНАЯ СИНХРОНИЗАЦИЯ ===
     async function loadFromServer() {
-      if (userId === 'guest') return;
+      if (userId === 'guest') return null;
       try {
         const res = await fetch(`${API_URL}?user_id=${userId}`);
         if (res.ok) {
-          const data = await res.json();
-          bc = data.balance || 0;
-          hackLevel = data.hack_level || 1;
-          limitLevel = data.limit_level || 0;
-          todayMined = data.today_mined || 0;
-          minedDate = data.mined_date || new Date().toISOString().slice(0,10);
-          streak = data.streak || 0;
-          lastClaim = data.last_claim || null;
-          fieldsUnlocked = data.fields_unlocked || 1;
-          resetData = data.reset_data || { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
-          console.log('Прогресс загружен с сервера');
+          return await res.json();
         }
       } catch (e) {
-        console.log('Сервер недоступен — используем локальный прогресс');
+        console.log('Сервер недоступен');
       }
+      return null;
     }
 
     async function syncToServer() {
@@ -439,37 +475,53 @@
         reset_data: resetData
       };
 
-      console.log('Отправляю на сервер:', data);
-
       try {
-        const res = await fetch(API_URL, {
+        await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         });
-        const responseData = await res.json();
-        console.log('Ответ сервера:', res.status, responseData);
       } catch (e) {
-        console.log('Ошибка отправки на сервер — сохранено локально', e);
+        console.log('Ошибка отправки на сервер');
       }
     }
 
-  
-    function loadProgress() {
+    // === ЛОКАЛЬНОЕ ХРАНЕНИЕ ===
+    function loadLocalProgress() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const data = JSON.parse(saved);
-        bc = data.bc ?? bc;
-        hackLevel = data.hackLevel ?? hackLevel;
-        limitLevel = data.limitLevel ?? limitLevel;
-        todayMined = data.todayMined ?? todayMined;
-        lastReset = data.lastReset ?? lastReset;
-        fieldsUnlocked = data.fieldsUnlocked ?? fieldsUnlocked;
-        streak = data.streak ?? streak;
-        lastClaim = data.lastClaim ?? lastClaim;
-        minedDate = data.minedDate ?? minedDate;
-        resetData = data.resetData ?? resetData;
+        bc = data.bc ?? 0;
+        hackLevel = data.hackLevel ?? 1;
+        limitLevel = data.limitLevel ?? 0;
+        todayMined = data.todayMined ?? 0;
+        lastReset = data.lastReset ?? Date.now();
+        fieldsUnlocked = data.fieldsUnlocked ?? 1;
+        streak = data.streak ?? 0;
+        lastClaim = data.lastClaim ?? null;
+        minedDate = data.minedDate ?? new Date().toISOString().slice(0,10);
+        resetData = data.resetData ?? { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
       }
+    }
+
+    function applyProgress(data) {
+      bc = data.balance || 0;
+      hackLevel = data.hack_level || 1;
+      limitLevel = data.limit_level || 0;
+      todayMined = data.today_mined || 0;
+      minedDate = data.mined_date || new Date().toISOString().slice(0,10);
+      streak = data.streak || 0;
+      lastClaim = data.last_claim || null;
+      fieldsUnlocked = data.fields_unlocked || 1;
+      resetData = data.reset_data || { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
+
+      updateBalance();
+      updateDailyMined();
+      checkDailyBonus();
+      unlockFields();
+      updateHackUpgrade();
+      updateLimitUpgrade();
+      updateResetButtonVisibility(getCurrentLimit());
     }
 
     function saveProgress() {
@@ -478,90 +530,68 @@
         fieldsUnlocked, streak, lastClaim, minedDate, resetData
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      syncToServer(); 
+      syncToServer();
     }
 
- 
-    let bc = 0;
-    let hackLevel = 1;
-    let limitLevel = 0;
-    let fieldsUnlocked = 1;
-    let streak = 0;
-    let lastClaim = null;
-    let todayMined = 0;
-    let minedDate = new Date().toISOString().slice(0,10);
-    let lastReset = Date.now();
-    let resetData = { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
+    function showMessage(text) {
+      const msg = document.getElementById('brenk-msg');
+      msg.textContent = text;
+      setTimeout(() => msg.textContent = '', 4000);
+    }
 
-    const BASE_LIMIT = 5000;
-    const limitIncreases = [0, 2000, 3500, 5000, 7000, 10000];
-    const limitCosts = [0, 2000, 5000, 7500, 12000, 25000];
-    const hackCosts = [0, 2000, 4500, 8000, 14000, 20000, 35000, 50000, 75000, 100000];
-
+    // === АВТОМАТИЧЕСКАЯ ПРОВЕРКА ПРИ ЗАПУСКЕ ===
     (async () => {
-      await loadFromServer();
-      loadProgress();
-      updateBalance();
-      updateDailyMined();
-      checkDailyBonus();
-      unlockFields();
-      updateHackUpgrade();
-      updateLimitUpgrade();
+      const serverData = await loadFromServer();
+
+      // Если на сервере есть прогресс с балансом > 0
+      if (serverData && (serverData.balance > 0 || serverData.today_mined > 0)) {
+        loadLocalProgress(); // Загружаем локальный для сравнения
+
+        // Если локальный баланс меньше серверного или его нет
+        if (bc < (serverData.balance || 0)) {
+          document.getElementById('server-balance').textContent = (serverData.balance || 0).toLocaleString();
+          document.getElementById('server-mined').textContent = (serverData.today_mined || 0).toLocaleString();
+          document.getElementById('sync-modal').style.display = 'flex';
+          document.getElementById('loader').classList.add('hidden');
+
+          // Сохраняем серверные данные для использования в кнопках
+          window.serverProgress = serverData;
+          return;
+        }
+      }
+
+      // Если серверный прогресс не актуальнее — используем локальный
+      if (!serverData || bc >= (serverData.balance || 0)) {
+        loadLocalProgress();
+      }
+
+      // Применяем прогресс и запускаем игру
+      applyProgress({ balance: bc, hack_level: hackLevel, limit_level: limitLevel, today_mined: todayMined, mined_date: minedDate, streak: streak, last_claim: lastClaim, fields_unlocked: fieldsUnlocked, reset_data: resetData });
+
+      document.getElementById('loader').classList.add('hidden');
     })();
 
-
-    async function forceSyncFromServer() {
-      if (userId === 'guest') {
-        showMessage("Гость не может синхронизироваться ♡");
-        return;
-      }
-
-      showMessage("Загружаю актуальный прогресс с сервера...");
-
-      try {
-        const res = await fetch(`${API_URL}?user_id=${userId}`);
-        if (res.ok) {
-          const data = await res.json();
-
-
-          bc = data.balance || 0;
-          hackLevel = data.hack_level || 1;
-          limitLevel = data.limit_level || 0;
-          todayMined = data.today_mined || 0;
-          minedDate = data.mined_date || new Date().toISOString().slice(0,10);
-          streak = data.streak || 0;
-          lastClaim = data.last_claim || null;
-          fieldsUnlocked = data.fields_unlocked || 1;
-          resetData = data.reset_data || { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
-
-
-          updateBalance();
-          updateDailyMined();
-          checkDailyBonus();
-          unlockFields();
-          updateHackUpgrade();
-          updateLimitUpgrade();
-          updateResetButtonVisibility(getCurrentLimit());
-
-
-          saveProgress();
-
-          showMessage("Прогресс успешно синхронизирован с сервером ♡");
-        } else {
-          showMessage("Ошибка связи с сервером :(");
-        }
-      } catch (e) {
-        showMessage("Нет связи — попробуй позже");
-      }
+    // === ФУНКЦИИ МОДАЛЬНОГО ОКНА ===
+    function loadServerProgress() {
+      applyProgress(window.serverProgress);
+      saveProgress(); // Сохраняем серверный как локальный
+      showMessage("Прогресс загружен с сервера ♡");
+      document.getElementById('sync-modal').style.display = 'none';
     }
 
-    // === ЭЛЕМЕНТЫ ===
+    function continueLocal() {
+      showMessage("Продолжаем с локального прогресса ♡");
+      document.getElementById('sync-modal').style.display = 'none';
+    }
+
+    // === ОСТАЛЬНОЙ КОД (без изменений) ===
+    // (все функции: getCurrentLimit, updateBalance, tapCircle, и т.д. — оставлены как в твоём оригинале)
+
     const bcAmount = document.getElementById('bc-amount');
     const dailyMined = document.getElementById('daily-mined');
     const dailyLimitSpan = document.getElementById('daily-limit');
     const progressFill = document.getElementById('progress-fill');
     const dailyBonusBtn = document.getElementById('daily-bonus');
-    const brenkMsg = document.getElementById('brenk-msg');
     const resetLimitBtn = document.getElementById('reset-limit-btn');
     const tapOverlay = document.getElementById('tap-overlay');
     const tapCircle = document.getElementById('tap-circle');
@@ -726,11 +756,6 @@
         dailyBonusBtn.innerHTML = "Бонус уже получен сегодня. Возвращайся завтра ♡";
         dailyBonusBtn.onclick = null;
       }
-    }
-
-    function showMessage(text) {
-      brenkMsg.textContent = text;
-      setTimeout(() => brenkMsg.textContent = '', 4000);
     }
 
     function unlockFields() {
