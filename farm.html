@@ -272,6 +272,28 @@
       0% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
       100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.3); }
     }
+
+  
+    .sync-btn {
+      text-align: center;
+      margin: 15px 0;
+    }
+    .sync-btn button {
+      padding: 12px 24px;
+      background: rgba(13,110,253,0.35);
+      border: 1px solid #0d6efd;
+      border-radius: 15px;
+      color: #90e6ff;
+      font-size: 1.1em;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(13,110,253,0.3);
+      transition: all 0.3s ease;
+    }
+    .sync-btn button:hover {
+      background: rgba(13,110,253,0.5);
+      box-shadow: 0 0 25px rgba(13,110,253,0.6);
+      transform: translateY(-2px);
+    }
   </style>
 </head>
 <body>
@@ -288,6 +310,11 @@
 
     <main>
       <div class="card">
+      
+        <div class="sync-btn">
+          <button onclick="forceSyncFromServer()">🔄 Синхронизировать с сервером</button>
+        </div>
+
         <div id="balance-display">Brenk-Coin: <span id="bc-amount">0</span></div>
 
         <div class="daily-limit">
@@ -350,7 +377,7 @@
     tg.ready();
     tg.expand();
 
-    // === АВТОРИЗАЦИЯ ===
+  
     const user = tg.initDataUnsafe.user;
     let userId = 'guest';
 
@@ -372,9 +399,9 @@
     }
 
     const STORAGE_KEY = `brenkFarm_${userId}`;
-    const API_URL = 'https://10311.dscrd.ru/api/farm'; // ← Обновлённый адрес от Valkyrie
+    const API_URL = 'https://10311.dscrd.ru/api/farm';
 
-    // === СЕРВЕРНАЯ СИНХРОНИЗАЦИЯ ===
+
     async function loadFromServer() {
       if (userId === 'guest') return;
       try {
@@ -412,7 +439,7 @@
         reset_data: resetData
       };
 
-      console.log('Отправляю на сервер:', data);  // ← Логируем отправляемые данные
+      console.log('Отправляю на сервер:', data);
 
       try {
         const res = await fetch(API_URL, {
@@ -421,13 +448,13 @@
           body: JSON.stringify(data)
         });
         const responseData = await res.json();
-        console.log('Ответ сервера:', res.status, responseData);  // ← Логируем статус и ответ
+        console.log('Ответ сервера:', res.status, responseData);
       } catch (e) {
         console.log('Ошибка отправки на сервер — сохранено локально', e);
       }
     }
 
-    // === ЛОКАЛЬНОЕ ХРАНЕНИЕ (fallback) ===
+  
     function loadProgress() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -454,7 +481,7 @@
       syncToServer(); 
     }
 
-    
+ 
     let bc = 0;
     let hackLevel = 1;
     let limitLevel = 0;
@@ -471,7 +498,6 @@
     const limitCosts = [0, 2000, 5000, 7500, 12000, 25000];
     const hackCosts = [0, 2000, 4500, 8000, 14000, 20000, 35000, 50000, 75000, 100000];
 
- 
     (async () => {
       await loadFromServer();
       loadProgress();
@@ -483,7 +509,53 @@
       updateLimitUpgrade();
     })();
 
-    
+
+    async function forceSyncFromServer() {
+      if (userId === 'guest') {
+        showMessage("Гость не может синхронизироваться ♡");
+        return;
+      }
+
+      showMessage("Загружаю актуальный прогресс с сервера...");
+
+      try {
+        const res = await fetch(`${API_URL}?user_id=${userId}`);
+        if (res.ok) {
+          const data = await res.json();
+
+
+          bc = data.balance || 0;
+          hackLevel = data.hack_level || 1;
+          limitLevel = data.limit_level || 0;
+          todayMined = data.today_mined || 0;
+          minedDate = data.mined_date || new Date().toISOString().slice(0,10);
+          streak = data.streak || 0;
+          lastClaim = data.last_claim || null;
+          fieldsUnlocked = data.fields_unlocked || 1;
+          resetData = data.reset_data || { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
+
+
+          updateBalance();
+          updateDailyMined();
+          checkDailyBonus();
+          unlockFields();
+          updateHackUpgrade();
+          updateLimitUpgrade();
+          updateResetButtonVisibility(getCurrentLimit());
+
+
+          saveProgress();
+
+          showMessage("Прогресс успешно синхронизирован с сервером ♡");
+        } else {
+          showMessage("Ошибка связи с сервером :(");
+        }
+      } catch (e) {
+        showMessage("Нет связи — попробуй позже");
+      }
+    }
+
+    // === ЭЛЕМЕНТЫ ===
     const bcAmount = document.getElementById('bc-amount');
     const dailyMined = document.getElementById('daily-mined');
     const dailyLimitSpan = document.getElementById('daily-limit');
