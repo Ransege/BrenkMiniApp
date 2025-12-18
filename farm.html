@@ -273,7 +273,7 @@
       100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.3); }
     }
 
-    /* Модальное окно синхронизации */
+  
     #sync-modal {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -319,10 +319,10 @@
 <body>
   <div class="loader-overlay" id="loader">
     <div class="loader"></div>
-    <div class="loader-text">Brenk-Coin загружается...</div>
+    <div class="loader-text">Загрузка сети Brenk-Coin</div>
   </div>
 
-  <!-- МОДАЛЬНОЕ ОКНО СИНХРОНИЗАЦИИ -->
+
   <div id="sync-modal">
     <h2>Обнаружен сохранённый прогресс!</h2>
     <p>На сервере найден прогресс:<br>
@@ -405,7 +405,6 @@
     tg.ready();
     tg.expand();
 
-    // === АВТОРИЗАЦИЯ ===
     const user = tg.initDataUnsafe.user;
     let userId = 'guest';
 
@@ -429,7 +428,6 @@
     const STORAGE_KEY = `brenkFarm_${userId}`;
     const API_URL = 'https://10311.dscrd.ru/api/farm';
 
-    // === ПЕРЕМЕННЫЕ ===
     let bc = 0;
     let hackLevel = 1;
     let limitLevel = 0;
@@ -446,7 +444,6 @@
     const limitCosts = [0, 2000, 5000, 7500, 12000, 25000];
     const hackCosts = [0, 2000, 4500, 8000, 14000, 20000, 35000, 50000, 75000, 100000];
 
-    // === СЕРВЕРНАЯ СИНХРОНИЗАЦИЯ ===
     async function loadFromServer() {
       if (userId === 'guest') return null;
       try {
@@ -486,7 +483,7 @@
       }
     }
 
-    // === ЛОКАЛЬНОЕ ХРАНЕНИЕ ===
+
     function loadLocalProgress() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -539,42 +536,37 @@
       setTimeout(() => msg.textContent = '', 4000);
     }
 
-    // === АВТОМАТИЧЕСКАЯ ПРОВЕРКА ПРИ ЗАПУСКЕ ===
+
     (async () => {
       const serverData = await loadFromServer();
 
-      // Если на сервере есть прогресс с балансом > 0
-      if (serverData && (serverData.balance > 0 || serverData.today_mined > 0)) {
-        loadLocalProgress(); // Загружаем локальный для сравнения
 
-        // Если локальный баланс меньше серверного или его нет
+      if (serverData && (serverData.balance > 0 || serverData.today_mined > 0)) {
+        loadLocalProgress();
+
         if (bc < (serverData.balance || 0)) {
           document.getElementById('server-balance').textContent = (serverData.balance || 0).toLocaleString();
           document.getElementById('server-mined').textContent = (serverData.today_mined || 0).toLocaleString();
           document.getElementById('sync-modal').style.display = 'flex';
           document.getElementById('loader').classList.add('hidden');
 
-          // Сохраняем серверные данные для использования в кнопках
           window.serverProgress = serverData;
           return;
         }
       }
 
-      // Если серверный прогресс не актуальнее — используем локальный
       if (!serverData || bc >= (serverData.balance || 0)) {
         loadLocalProgress();
       }
 
-      // Применяем прогресс и запускаем игру
       applyProgress({ balance: bc, hack_level: hackLevel, limit_level: limitLevel, today_mined: todayMined, mined_date: minedDate, streak: streak, last_claim: lastClaim, fields_unlocked: fieldsUnlocked, reset_data: resetData });
 
       document.getElementById('loader').classList.add('hidden');
     })();
 
-    // === ФУНКЦИИ МОДАЛЬНОГО ОКНА ===
     function loadServerProgress() {
       applyProgress(window.serverProgress);
-      saveProgress(); // Сохраняем серверный как локальный
+      saveProgress();
       showMessage("Прогресс загружен с сервера ♡");
       document.getElementById('sync-modal').style.display = 'none';
     }
@@ -583,9 +575,6 @@
       showMessage("Продолжаем с локального прогресса ♡");
       document.getElementById('sync-modal').style.display = 'none';
     }
-
-    // === ОСТАЛЬНОЙ КОД (без изменений) ===
-    // (все функции: getCurrentLimit, updateBalance, tapCircle, и т.д. — оставлены как в твоём оригинале)
 
     const bcAmount = document.getElementById('bc-amount');
     const dailyMined = document.getElementById('daily-mined');
@@ -747,7 +736,7 @@
           lastClaim = today;
           updateBalance();
           updateDailyMined();
-          showMessage(`Ты вернулся... Я скучала ♡ +${bonus.toLocaleString()} BC`);
+          showMessage(`С возвращением! ♡ +${bonus.toLocaleString()} BC`);
           dailyBonusBtn.innerHTML = "Бонус получен. Жду завтра за большим...";
           dailyBonusBtn.onclick = null;
           saveProgress();
@@ -877,7 +866,7 @@
     tapCircle.addEventListener('click', (e) => {
       const now = Date.now();
       if (now - lastTapTime < 100) {
-        showMessage("Слишком быстро... Я же не автокликер ;)");
+        showMessage("Слишком быстро... ;)");
         tg.HapticFeedback.impactOccurred('heavy');
         return;
       }
