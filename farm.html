@@ -6,6 +6,10 @@
   <title>Brenk-Coin Farm</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="style.css" />
+
+  
+  <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+
   <style>
     body { padding: 10px; }
     .loader-overlay {
@@ -190,7 +194,6 @@
       z-index: 9999;
       overflow: hidden;
     }
-
     .glass-sphere {
       width: 280px;
       height: 280px;
@@ -202,7 +205,6 @@
       overflow: hidden;
       cursor: pointer;
     }
-
     .liquid {
       position: absolute;
       bottom: 0;
@@ -214,7 +216,6 @@
       border-radius: 50%;
       box-shadow: 0 0 40px #0d6efd;
     }
-
     .liquid::before {
       content: '';
       position: absolute;
@@ -227,7 +228,6 @@
       border-radius: 50%;
       filter: blur(20px);
     }
-
     .bubble {
       position: absolute;
       background: rgba(255, 255, 255, 0.4);
@@ -236,13 +236,11 @@
       opacity: 0.6;
       animation: bubbleRise linear infinite;
     }
-
     @keyframes bubbleRise {
       0% { transform: translateY(0) scale(0.5); opacity: 0; }
       20% { opacity: 0.6; }
       100% { transform: translateY(-300px) scale(1.2); opacity: 0; }
     }
-
     .tap-info {
       margin-top: 30px;
       text-align: center;
@@ -258,7 +256,6 @@
       border-radius: 50px;
       cursor: pointer;
     }
-
     .coin-particle {
       position: absolute;
       font-size: 2em;
@@ -273,7 +270,6 @@
       100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.3); }
     }
 
-  
     #sync-modal {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -314,6 +310,46 @@
       border: 1px solid #90e6ff;
       color: #90e6ff;
     }
+
+    /* Секция TON-кошелька */
+    .wallet-section {
+      margin: 30px 0;
+      padding: 20px;
+      background: rgba(13, 110, 253, 0.15);
+      border: 2px solid #0d6efd;
+      border-radius: 20px;
+      text-align: center;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 30px rgba(13, 110, 253, 0.4);
+    }
+    #connect-wallet-btn {
+      width: 100%;
+      padding: 18px;
+      background: linear-gradient(90deg, #00a3ff, #0088cc);
+      border: 3px solid #00a3ff;
+      color: white;
+      font-size: 1.4em;
+      font-weight: bold;
+      border-radius: 20px;
+      cursor: pointer;
+      box-shadow: 0 0 30px rgba(0, 163, 255, 0.6);
+      transition: all 0.3s ease;
+    }
+    #connect-wallet-btn:hover {
+      transform: scale(1.02);
+      box-shadow: 0 0 45px #00a3ff;
+    }
+    #wallet-status {
+      margin-top: 15px;
+      font-size: 1.2em;
+      color: #90e6ff;
+      text-shadow: 0 0 15px #0d6efd;
+      min-height: 50px;
+    }
+    .ton-icon {
+      font-size: 1.5em;
+      margin-right: 8px;
+    }
   </style>
 </head>
 <body>
@@ -321,7 +357,6 @@
     <div class="loader"></div>
     <div class="loader-text">Загрузка сети Brenk-Coin</div>
   </div>
-
 
   <div id="sync-modal">
     <h2>Обнаружен сохранённый прогресс!</h2>
@@ -343,6 +378,15 @@
 
     <main>
       <div class="card">
+
+        <!-- TON-кошелёк -->
+        <div class="wallet-section">
+          <button id="connect-wallet-btn">
+            <span class="ton-icon">💎</span> Подключить TON-кошелёк
+          </button>
+          <div id="wallet-status">Кошелёк не подключён</div>
+        </div>
+
         <div id="balance-display">Brenk-Coin: <span id="bc-amount">0</span></div>
 
         <div class="daily-limit">
@@ -355,7 +399,7 @@
         </button>
 
         <div class="daily-bonus" id="daily-bonus">Нажми, чтобы забрать ежедневный бонус!</div>
-        
+
         <div class="brenk-message" id="brenk-msg"></div>
 
         <div class="fields">
@@ -407,7 +451,6 @@
 
     const user = tg.initDataUnsafe.user;
     let userId = 'guest';
-
     if (user && user.id) {
       userId = user.id;
       const brenkUser = {
@@ -444,6 +487,50 @@
     const limitCosts = [0, 2000, 5000, 7500, 12000, 25000];
     const hackCosts = [0, 2000, 4500, 8000, 14000, 20000, 35000, 50000, 75000, 100000];
 
+    // =================== TON CONNECT ===================
+    const tonConnectUI = new TONConnectUI({
+      manifestUrl: 'https://your-domain.com/tonconnect-manifest.json', // ← ОБЯЗАТЕЛЬНО ЗАМЕНИ НА СВОЙ URL!
+      buttonRootId: 'connect-wallet-btn'
+    });
+
+    async function updateWalletStatus() {
+      const statusEl = document.getElementById('wallet-status');
+
+      if (tonConnectUI.connected) {
+        const address = tonConnectUI.account.address;
+        const shortAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
+
+        statusEl.innerHTML = `
+          <span class="ton-icon">💎</span> Подключён:<br>
+          <b>${shortAddress}</b>
+          <br><small style="opacity:0.8;">Баланс: загружается...</small>
+        `;
+
+        try {
+          const balanceNano = await tonConnectUI.getBalance();
+          const balanceTon = (balanceNano / 1e9).toFixed(3);
+          statusEl.innerHTML = `
+            <span class="ton-icon">💎</span> Подключён:<br>
+            <b>${shortAddress}</b>
+            <br><small style="opacity:0.9;">Баланс: ${balanceTon} TON</small>
+          `;
+        } catch (e) {
+          console.error('Ошибка получения баланса:', e);
+          statusEl.innerHTML += '<br><small style="color:#ff6666;">Баланс недоступен</small>';
+        }
+
+        localStorage.setItem('tonAddress', address);
+        console.log('TON адрес подключён:', address);
+      } else {
+        statusEl.innerHTML = 'Кошелёк не подключён';
+        localStorage.removeItem('tonAddress');
+      }
+    }
+
+    tonConnectUI.onStatusChange(updateWalletStatus);
+    window.addEventListener('load', updateWalletStatus);
+    // =================== КОНЕЦ TON CONNECT ===================
+
     async function loadFromServer() {
       if (userId === 'guest') return null;
       try {
@@ -471,7 +558,6 @@
         fields_unlocked: fieldsUnlocked,
         reset_data: resetData
       };
-
       try {
         await fetch(API_URL, {
           method: 'POST',
@@ -482,7 +568,6 @@
         console.log('Ошибка отправки на сервер');
       }
     }
-
 
     function loadLocalProgress() {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -536,31 +621,23 @@
       setTimeout(() => msg.textContent = '', 4000);
     }
 
-
     (async () => {
       const serverData = await loadFromServer();
-
-
       if (serverData && (serverData.balance > 0 || serverData.today_mined > 0)) {
         loadLocalProgress();
-
         if (bc < (serverData.balance || 0)) {
           document.getElementById('server-balance').textContent = (serverData.balance || 0).toLocaleString();
           document.getElementById('server-mined').textContent = (serverData.today_mined || 0).toLocaleString();
           document.getElementById('sync-modal').style.display = 'flex';
           document.getElementById('loader').classList.add('hidden');
-
           window.serverProgress = serverData;
           return;
         }
       }
-
       if (!serverData || bc >= (serverData.balance || 0)) {
         loadLocalProgress();
       }
-
       applyProgress({ balance: bc, hack_level: hackLevel, limit_level: limitLevel, today_mined: todayMined, mined_date: minedDate, streak: streak, last_claim: lastClaim, fields_unlocked: fieldsUnlocked, reset_data: resetData });
-
       document.getElementById('loader').classList.add('hidden');
     })();
 
@@ -576,6 +653,7 @@
       document.getElementById('sync-modal').style.display = 'none';
     }
 
+    // Элементы DOM
     const bcAmount = document.getElementById('bc-amount');
     const dailyMined = document.getElementById('daily-mined');
     const dailyLimitSpan = document.getElementById('daily-limit');
@@ -587,14 +665,12 @@
     const liquid = document.getElementById('liquid');
     const tapGain = document.getElementById('tap-gain');
     const tapLevel = document.getElementById('tap-level');
-
     const hackLevelSpan = document.getElementById('hack-level');
     const nextLevelSpan = document.getElementById('next-level');
     const perTapSpan = document.getElementById('per-tap');
     const nextPerTapSpan = document.getElementById('next-per-tap');
     const upgradeCostSpan = document.getElementById('upgrade-cost');
     const hackUpgradeBtn = document.getElementById('hack-upgrade');
-
     const limitLevelSpan = document.getElementById('limit-level');
     const nextLimitLevelSpan = document.getElementById('next-limit-level');
     const currentLimitSpan = document.getElementById('current-limit');
@@ -637,15 +713,12 @@
         minedDate = today;
         resetData = { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
       }
-
       dailyMined.textContent = todayMined.toLocaleString();
       const currentLimit = getCurrentLimit();
       dailyLimitSpan.textContent = currentLimit.toLocaleString();
       progressFill.style.width = `${Math.min(100, (todayMined / currentLimit) * 100)}%`;
-
       const fillPercent = 100 - (todayMined / currentLimit) * 100;
       liquid.style.height = `${Math.max(0, fillPercent)}%`;
-
       updateResetButtonVisibility(currentLimit);
       saveProgress();
     }
@@ -662,9 +735,7 @@
         resetLimitBtn.style.display = 'none';
         return;
       }
-
       const now = Date.now();
-
       if (resetData.resetsToday >= 3) {
         const timeSinceCycle = now - resetData.cycleStartTime;
         const cooldown12h = 12 * 60 * 60 * 1000;
@@ -680,9 +751,7 @@
           resetData.cycleStartTime = 0;
         }
       }
-
       const nextResetNum = resetData.resetsToday + 1;
-
       let waitTime = 0;
       if (nextResetNum === 2) waitTime = 2 * 60 * 60 * 1000;
       else if (nextResetNum === 3) waitTime = 6 * 60 * 60 * 1000;
@@ -701,27 +770,21 @@
         resetLimitBtn.textContent = '🔄 Обновить лимит (бесплатно)';
         resetLimitBtn.disabled = false;
       }
-
       resetLimitBtn.style.display = 'block';
     }
 
     resetLimitBtn.addEventListener('click', () => {
       if (resetLimitBtn.disabled) return;
-
       resetDailyMining();
-
       const now = Date.now();
       resetData.resetsToday += 1;
       resetData.lastResetTime = now;
       if (resetData.resetsToday === 1) {
         resetData.cycleStartTime = now;
       }
-
       saveProgress();
-
       showMessage(`Лимит обновлён! Это ${resetData.resetsToday}-е сегодня ♡`);
       tg.HapticFeedback.impactOccurred('soft');
-
       updateResetButtonVisibility(getCurrentLimit());
     });
 
@@ -755,7 +818,6 @@
       }
       fieldsUnlocked = Math.max(fieldsUnlocked, unlocked);
       saveProgress();
-
       document.querySelectorAll('.field').forEach((field, i) => {
         if (i + 1 <= fieldsUnlocked) {
           field.classList.remove('locked');
