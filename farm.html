@@ -909,45 +909,22 @@
       updateMinerDisplay();
     }, 1000);
 
-    function hideLoader() {
-      const loader = document.getElementById('loader');
-      if (loader) loader.classList.add('hidden');
-    }
-
     (async () => {
-      let serverData = null;
-      try {
-        serverData = await loadFromServer();
-      } catch (e) {}
-
-      loadLocalProgress();
-
+      const serverData = await loadFromServer();
       if (serverData && (serverData.balance > 0 || serverData.today_mined > 0)) {
+        loadLocalProgress();
         if (bc < (serverData.balance || 0)) {
           document.getElementById('server-balance').textContent = (serverData.balance || 0).toLocaleString();
           document.getElementById('server-mined').textContent = (serverData.today_mined || 0).toLocaleString();
           document.getElementById('sync-modal').style.display = 'flex';
-          hideLoader();
+          document.getElementById('loader').classList.add('hidden');
           window.serverProgress = serverData;
           return;
         }
       }
-
-      const progressData = {
-        balance: bc,
-        hack_level: hackLevel,
-        limit_level: limitLevel,
-        today_mined: todayMined,
-        mined_date: minedDate,
-        streak: streak,
-        last_claim: lastClaim,
-        fields_unlocked: fieldsUnlocked,
-        last_free_reset: lastFreeReset,
-        miner_level: minerLevel,
-        last_miner_claim: lastMinerClaim
-      };
-      applyProgress(progressData);
-      hideLoader();
+      loadLocalProgress();
+      applyProgress({balance: bc, hack_level: hackLevel, limit_level: limitLevel, today_mined: todayMined, mined_date: minedDate, streak: streak, last_claim: lastClaim, fields_unlocked: fieldsUnlocked, miner_level: minerLevel, last_miner_claim: lastMinerClaim, last_free_reset: lastFreeReset});
+      document.getElementById('loader').classList.add('hidden');
     })();
 
     function loadServerProgress() {
