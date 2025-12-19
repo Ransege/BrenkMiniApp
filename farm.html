@@ -441,7 +441,7 @@
     async function syncToServer() {
       if (userId === 'guest') return;
       const data = {
-        user_id: userId,  // ИСПРАВЛЕНО: было user484_id
+        user484_id: userId,
         balance: bc,
         hack_level: hackLevel,
         limit_level: limitLevel,
@@ -468,32 +468,32 @@
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const data = JSON.parse(saved);
-        bc = Number(data.bc) || 0;
-        hackLevel = Number(data.hackLevel) || 1;
-        limitLevel = Number(data.limitLevel) || 0;
-        todayMined = Number(data.todayMined) || 0;
-        lastReset = Number(data.lastReset) || Date.now();
-        fieldsUnlocked = Number(data.fieldsUnlocked) || 1;
-        streak = Number(data.streak) || 0;
-        lastClaim = data.lastClaim || null;
-        minedDate = data.minedDate || new Date().toISOString().slice(0,10);
-        resetData = data.resetData || { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
-        minerLevel = Number(data.minerLevel) || 0;
-        lastMinerClaim = Number(data.lastMinerClaim) || Date.now();
+        bc = data.bc ?? 0;
+        hackLevel = data.hackLevel ?? 1;
+        limitLevel = data.limitLevel ?? 0;
+        todayMined = data.todayMined ?? 0;
+        lastReset = data.lastReset ?? Date.now();
+        fieldsUnlocked = data.fieldsUnlocked ?? 1;
+        streak = data.streak ?? 0;
+        lastClaim = data.lastClaim ?? null;
+        minedDate = data.minedDate ?? new Date().toISOString().slice(0,10);
+        resetData = data.resetData ?? { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
+        minerLevel = data.minerLevel ?? 0;
+        lastMinerClaim = data.lastMinerClaim ?? Date.now();
       }
     }
     function applyProgress(data) {
-      bc = Number(data.balance) || 0;
-      hackLevel = Number(data.hack_level) || 1;
-      limitLevel = Number(data.limit_level) || 0;
-      todayMined = Number(data.today_mined) || 0;
+      bc = data.balance || 0;
+      hackLevel = data.hack_level || 1;
+      limitLevel = data.limit_level || 0;
+      todayMined = data.today_mined || 0;
       minedDate = data.mined_date || new Date().toISOString().slice(0,10);
-      streak = Number(data.streak) || 0;
+      streak = data.streak || 0;
       lastClaim = data.last_claim || null;
-      fieldsUnlocked = Number(data.fields_unlocked) || 1;
+      fieldsUnlocked = data.fields_unlocked || 1;
       resetData = data.reset_data || { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
-      minerLevel = Number(data.miner_level) || 0;
-      lastMinerClaim = Number(data.last_miner_claim) || Date.now();
+      minerLevel = data.miner_level || 0;
+      lastMinerClaim = data.last_miner_claim || Date.now();
       updateBalance();
       updateDailyMined();
       checkDailyBonus();
@@ -570,6 +570,18 @@
     const liquid = document.getElementById('liquid');
     const tapGain = document.getElementById('tap-gain');
     const tapLevel = document.getElementById('tap-level');
+    const hackLevelSpan = document.getElementById('hack-level');
+    const nextLevelSpan = document.getElementById('next-level');
+    const perTapSpan = document.getElementById('per-tap');
+    const nextPerTapSpan = document.getElementById('next-per-tap');
+    const upgradeCostSpan = document.getElementById('upgrade-cost');
+    const hackUpgradeBtn = document.getElementById('hack-upgrade');
+    const limitLevelSpan = document.getElementById('limit-level');
+    const nextLimitLevelSpan = document.getElementById('next-limit-level');
+    const currentLimitSpan = document.getElementById('current-limit');
+    const nextLimitSpan = document.getElementById('next-limit');
+    const limitCostSpan = document.getElementById('limit-cost');
+    const limitUpgradeBtn = document.getElementById('limit-upgrade');
     let lastTapTime = 0;
     let bubbleInterval = null;
     function getCurrentLimit() {
@@ -584,7 +596,7 @@
       return Math.pow(2, level - 1) * 2 + (level - 2) * 4;
     }
     function updateBalance() {
-      bcAmount.textContent = Number(bc).toLocaleString();
+      bcAmount.textContent = bc.toLocaleString();
       saveProgress();
     }
     function resetDailyMining() {
@@ -600,7 +612,7 @@
         minedDate = today;
         resetData = { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
       }
-      dailyMined.textContent = Number(todayMined).toLocaleString();
+      dailyMined.textContent = todayMined.toLocaleString();
       const currentLimit = getCurrentLimit();
       dailyLimitSpan.textContent = currentLimit.toLocaleString();
       progressFill.style.width = `${Math.min(100, (todayMined / currentLimit) * 100)}%`;
@@ -608,6 +620,157 @@
       liquid.style.height = `${Math.max(0, fillPercent)}%`;
       updateResetButtonVisibility(currentLimit);
       saveProgress();
+    }
+    function formatTime(seconds) {
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = seconds % 60;
+      return `${h ? h + 'ч ' : ''}${m.toString().padStart(2, '0')}м ${s.toString().padStart(2, '0')}с`;
+    }
+    function updateResetButtonVisibility(currentLimit) {
+      if (todayMined < currentLimit) {
+        resetLimitBtn.style.display = 'none';
+        return;
+      }
+      const now = Date.now();
+      if (resetData.resetsToday >= 3) {
+        const timeSinceCycle = now - resetData.cycleStartTime;
+        const cooldown12h = 12 * 60 * 60 * 1000;
+        if (timeSinceCycle < cooldown12h) {
+          const remaining = Math.ceil((cooldown12h - timeSinceCycle) / 1000);
+          resetLimitBtn.textContent = `Жди ${formatTime(remaining)} до новых 3 попыток`;
+          resetLimitBtn.disabled = true;
+          resetLimitBtn.style.display = 'block';
+          return;
+        } else {
+          resetData.resetsToday = 0;
+          resetData.lastResetTime = 0;
+          resetData.cycleStartTime = 0;
+        }
+      }
+      const nextResetNum = resetData.resetsToday + 1;
+      let waitTime = 0;
+      if (nextResetNum === 2) waitTime = 2 * 60 * 60 * 1000;
+      else if (nextResetNum === 3) waitTime = 6 * 60 * 60 * 1000;
+      if (waitTime > 0) {
+        const timeSinceLast = now - resetData.lastResetTime;
+        if (timeSinceLast < waitTime) {
+          const remaining = Math.ceil((waitTime - timeSinceLast) / 1000);
+          resetLimitBtn.textContent = `Жди ${formatTime(remaining)} до ${nextResetNum}-го обновления`;
+          resetLimitBtn.disabled = true;
+        } else {
+          resetLimitBtn.textContent = nextResetNum === 1 ? '🔄 Обновить лимит (бесплатно)' : `🔄 Обновить лимит (${nextResetNum}-е)`;
+          resetLimitBtn.disabled = false;
+        }
+      } else {
+        resetLimitBtn.textContent = '🔄 Обновить лимит (бесплатно)';
+        resetLimitBtn.disabled = false;
+      }
+      resetLimitBtn.style.display = 'block';
+    }
+    resetLimitBtn.addEventListener('click', () => {
+      if (resetLimitBtn.disabled) return;
+      resetDailyMining();
+      const now = Date.now();
+      resetData.resetsToday += 1;
+      resetData.lastResetTime = now;
+      if (resetData.resetsToday === 1) {
+        resetData.cycleStartTime = now;
+      }
+      saveProgress();
+      showMessage(`Лимит обновлён! Это ${resetData.resetsToday}-е сегодня ♡`);
+      tg.HapticFeedback.impactOccurred('soft');
+      updateResetButtonVisibility(getCurrentLimit());
+    });
+    function checkDailyBonus() {
+      const today = new Date().toISOString().slice(0, 10);
+      if (lastClaim !== today) {
+        const bonus = 500 + streak * 300;
+        dailyBonusBtn.innerHTML = `🎁 Забрать бонус: +${bonus.toLocaleString()} BC (стрик: ${streak + 1} день)`;
+        dailyBonusBtn.onclick = () => {
+          bc += bonus;
+          streak++;
+          lastClaim = today;
+          updateBalance();
+          updateDailyMined();
+          showMessage(`С возвращением! ♡ +${bonus.toLocaleString()} BC`);
+          dailyBonusBtn.innerHTML = "Бонус получен. Жду завтра за большим...";
+          dailyBonusBtn.onclick = null;
+          saveProgress();
+        };
+      } else {
+        dailyBonusBtn.innerHTML = "Бонус уже получен сегодня. Возвращайся завтра ♡";
+        dailyBonusBtn.onclick = null;
+      }
+    }
+    function unlockFields() {
+      const thresholds = [0, 5000, 20000, 100000, 500000];
+      let unlocked = 1;
+      for (let i = 0; i < thresholds.length; i++) {
+        if (bc >= thresholds[i]) unlocked = i + 1;
+      }
+      fieldsUnlocked = Math.max(fieldsUnlocked, unlocked);
+      saveProgress();
+      document.querySelectorAll('.field').forEach((field, i) => {
+        if (i + 1 <= fieldsUnlocked) {
+          field.classList.remove('locked');
+          field.classList.add('unlocked');
+        }
+      });
+    }
+    function updateHackUpgrade() {
+      hackLevelSpan.textContent = hackLevel;
+      nextLevelSpan.textContent = hackLevel + 1;
+      perTapSpan.textContent = getPerTap(hackLevel);
+      nextPerTapSpan.textContent = getPerTap(hackLevel + 1);
+      const cost = hackCosts[hackLevel];
+      upgradeCostSpan.textContent = cost.toLocaleString();
+      if (hackLevel >= 10) {
+        hackUpgradeBtn.innerHTML = "🔓 Максимальный уровень взлома достигнут!";
+        hackUpgradeBtn.disabled = true;
+      } else if (bc < cost) {
+        hackUpgradeBtn.innerHTML = `🔓 Недостаточно BC (${cost.toLocaleString()} нужно)`;
+        hackUpgradeBtn.disabled = true;
+      } else {
+        hackUpgradeBtn.innerHTML = `
+          🔓 Уровень взлома: ${hackLevel} → ${hackLevel + 1}<br>
+          <small>За тап: ${getPerTap(hackLevel)} BC → ${getPerTap(hackLevel + 1)} BC</small><br>
+          <strong>Стоимость: ${cost.toLocaleString()} BC</strong>
+        `;
+        hackUpgradeBtn.disabled = false;
+      }
+    }
+    function updateLimitUpgrade() {
+      limitLevelSpan.textContent = limitLevel;
+      nextLimitLevelSpan.textContent = limitLevel + 1;
+      currentLimitSpan.textContent = getCurrentLimit().toLocaleString();
+      const nextLimitValue = getCurrentLimit() + limitIncreases[limitLevel + 1];
+      nextLimitSpan.textContent = nextLimitValue.toLocaleString();
+      const cost = limitCosts[limitLevel + 1] || 0;
+      limitCostSpan.textContent = cost.toLocaleString();
+      if (limitLevel >= 5) {
+        limitUpgradeBtn.innerHTML = "⬆️ Максимальный лимит достигнут!";
+        limitUpgradeBtn.disabled = true;
+      } else if (bc < cost) {
+        limitUpgradeBtn.innerHTML = `⬆️ Недостаточно BC (${cost.toLocaleString()} нужно)`;
+        limitUpgradeBtn.disabled = true;
+      } else {
+        limitUpgradeBtn.innerHTML = `
+          ⬆️ Уровень лимита: ${limitLevel} → ${limitLevel + 1}<br>
+          <small>Лимит: ${getCurrentLimit().toLocaleString()} → ${nextLimitValue.toLocaleString()} BC</small><br>
+          <strong>Стоимость: ${cost.toLocaleString()} BC</strong>
+        `;
+        limitUpgradeBtn.disabled = false;
+      }
+    }
+    function calculatePendingMiner() {
+      if (minerLevel === 0) return 0;
+      const ratePerHour = minerRates[minerLevel];
+      const elapsedMs = Date.now() - lastMinerClaim;
+      const elapsedHours = elapsedMs / 3600000;
+      const pending = Math.floor(ratePerHour * elapsedHours);
+      const maxPending = ratePerHour * 6;
+      return Math.min(pending, maxPending);
     }
     function updateMinerDisplay() {
       const rate = minerRates[minerLevel];
@@ -629,22 +792,109 @@
       } else {
         const next = minerLevel + 1;
         const cost = minerCosts[next];
-        if (bc < cost) {
-          upgradeBtn.innerHTML = `⛏️ Недостаточно BC (${cost.toLocaleString()} нужно)`;
-          upgradeBtn.disabled = true;
-        } else {
-          const nextRate = minerRates[next];
-          upgradeBtn.innerHTML = `⛏️ Уровень майнера: ${minerLevel} → ${next}<br><small>Добыча: ${rate} → ${nextRate} BC/час</small><br><strong>Стоимость: ${cost.toLocaleString()} BC</strong>`;
-          upgradeBtn.disabled = false;
-        }
+        const nextRate = minerRates[next];
+        upgradeBtn.innerHTML = `⛏️ Уровень майнера: ${minerLevel} → ${next}<br><small>Добыча: ${rate} → ${nextRate} BC/час</small><br><strong>Стоимость: ${cost.toLocaleString()} BC</strong>`;
+        upgradeBtn.disabled = bc < cost;
       }
     }
-    document.getElementById('miner-upgrade').addEventListener('click', () => {
-      const upgradeBtn = document.getElementById('miner-upgrade');
-      if (upgradeBtn.disabled) {
-        showMessage("Недостаточно BC для улучшения майнера ♡");
+    function createBubble() {
+      if (tapOverlay.style.display !== 'flex') return;
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      const size = Math.random() * 20 + 10;
+      bubble.style.width = `${size}px`;
+      bubble.style.height = `${size}px`;
+      bubble.style.left = `${Math.random() * 260 + 10}px`;
+      bubble.style.bottom = '20px';
+      bubble.style.animationDuration = `${Math.random() * 4 + 4}s`;
+      bubble.style.animationDelay = `${Math.random() * 2}s`;
+      tapCircle.appendChild(bubble);
+      setTimeout(() => bubble.remove(), 8000);
+    }
+    function startBubbles() {
+      if (bubbleInterval) clearInterval(bubbleInterval);
+      bubbleInterval = setInterval(createBubble, 800);
+    }
+    function createCoinParticle(x, y) {
+      const particle = document.createElement('div');
+      particle.className = 'coin-particle';
+      particle.textContent = '🪙';
+      particle.style.left = `${x}px`;
+      particle.style.top = `${y}px`;
+      particle.style.setProperty('--dx', `${(Math.random() - 0.5) * 200}px`);
+      particle.style.setProperty('--dy', `${(Math.random() - 0.5) * 200 - 100}px`);
+      particle.style.setProperty('--rot', `${Math.random() * 720 - 360}deg`);
+      document.body.appendChild(particle);
+      setTimeout(() => particle.remove(), 1200);
+    }
+    document.querySelectorAll('.field').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!btn.classList.contains('unlocked')) return;
+        tapOverlay.style.display = 'flex';
+        tapGain.textContent = getPerTap(hackLevel);
+        tapLevel.textContent = hackLevel;
+        tg.HapticFeedback.impactOccurred('medium');
+        startBubbles();
+      });
+    });
+    function closeTap() {
+      tapOverlay.style.display = 'none';
+      if (bubbleInterval) clearInterval(bubbleInterval);
+      document.querySelectorAll('.bubble').forEach(b => b.remove());
+    }
+    tapCircle.addEventListener('click', (e) => {
+      const now = Date.now();
+      if (now - lastTapTime < 100) {
+        showMessage("Слишком быстро... ;)");
+        tg.HapticFeedback.impactOccurred('heavy');
         return;
       }
+      lastTapTime = now;
+      const currentLimit = getCurrentLimit();
+      if (todayMined >= currentLimit) {
+        showMessage("Лимит на сегодня исчерпан. Возвращайся завтра ♡");
+        return;
+      }
+      const gain = getPerTap(hackLevel);
+      bc += gain;
+      todayMined += gain;
+      updateBalance();
+      updateDailyMined();
+      unlockFields();
+      const rect = tapCircle.getBoundingClientRect();
+      const clickX = e.clientX;
+      const clickY = e.clientY;
+      const numCoins = hackLevel;
+      for (let i = 0; i < numCoins; i++) {
+        setTimeout(() => createCoinParticle(clickX, clickY), i * 50);
+      }
+      tg.HapticFeedback.impactOccurred('light');
+      showMessage(`+${gain} BC ♡`);
+    });
+    hackUpgradeBtn.addEventListener('click', () => {
+      if (hackUpgradeBtn.disabled) return;
+      const cost = hackCosts[hackLevel];
+      bc -= cost;
+      hackLevel++;
+      updateBalance();
+      updateHackUpgrade();
+      showMessage(`Уровень взлома повышен до ${hackLevel}! Теперь +${getPerTap(hackLevel)} BC за тап ♡`);
+      saveProgress();
+    });
+    limitUpgradeBtn.addEventListener('click', () => {
+      if (limitUpgradeBtn.disabled) return;
+      const cost = limitCosts[limitLevel + 1];
+      bc -= cost;
+      limitLevel++;
+      updateBalance();
+      updateDailyMined();
+      updateLimitUpgrade();
+      showMessage(`Лимит повышен! Теперь можно добыть до ${getCurrentLimit()} BC в день ♡`);
+      saveProgress();
+    });
+    document.getElementById('miner-upgrade').addEventListener('click', () => {
+      const upgradeBtn = document.getElementById('miner-upgrade');
+      if (upgradeBtn.disabled) return;
       const next = minerLevel + 1;
       const cost = minerCosts[next];
       bc -= cost;
