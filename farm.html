@@ -264,46 +264,6 @@
       0% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
       100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.3); }
     }
-    #sync-modal {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.95);
-      display: none;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 10000;
-      padding: 20px;
-      text-align: center;
-      color: white;
-    }
-    #sync-modal h2 {
-      color: #0d6efd;
-      margin-bottom: 20px;
-      font-size: 1.8em;
-    }
-    #sync-modal p {
-      font-size: 1.4em;
-      margin-bottom: 30px;
-    }
-    #sync-modal button {
-      padding: 15px 30px;
-      margin: 10px;
-      border-radius: 15px;
-      font-size: 1.2em;
-      cursor: pointer;
-      min-width: 200px;
-    }
-    #sync-modal button:first-child {
-      background: #0d6efd;
-      border: none;
-      color: white;
-    }
-    #sync-modal button:last-child {
-      background: rgba(255,255,255,0.15);
-      border: 1px solid #90e6ff;
-      color: #90e6ff;
-    }
   </style>
 </head>
 <body>
@@ -408,10 +368,12 @@
     const minerRates = [0, 300, 900, 1800, 6000, 18000];
     const minerCosts = [0, 500, 2000, 3500, 10000, 35000];
 
+    let saveTimeout = null;
+
     async function loadFromServer() {
       if (userId === 'guest') return null;
       try {
-        const res = await fetch(`${API_URL}?user_id=${userId}`);
+        const res = await fetch(`${API_URL}?user_id=${userId}`, { cache: 'no-store' });
         if (res.ok) {
           return await res.json();
         }
@@ -449,7 +411,8 @@
     }
 
     function saveProgress() {
-      setTimeout(saveToServer, 3000);
+      if (saveTimeout) clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(saveToServer, 2000);
     }
 
     function applyProgress(data) {
@@ -490,8 +453,9 @@
 
     function updateFreeResetButton() {
       const currentLimit = getCurrentLimit();
+      const btn = document.getElementById('reset-limit-btn');
       if (todayMined < currentLimit) {
-        document.getElementById('reset-limit-btn').style.display = 'none';
+        btn.style.display = 'none';
         return;
       }
 
@@ -500,7 +464,6 @@
       const timeSinceLast = now - lastFreeReset;
 
       if (timeSinceLast >= dayMs) {
-        const btn = document.getElementById('reset-limit-btn');
         btn.textContent = '🔄 Обновить лимит (бесплатно 1 раз в день)';
         btn.disabled = false;
         btn.style.display = 'block';
@@ -509,7 +472,6 @@
         const h = Math.floor(remainingSec / 3600);
         const m = Math.floor((remainingSec % 3600) / 60);
         const s = remainingSec % 60;
-        const btn = document.getElementById('reset-limit-btn');
         btn.textContent = `Жди ${h ? h + 'ч ' : ''}${m.toString().padStart(2,'0')}м ${s.toString().padStart(2,'0')}с`;
         btn.disabled = true;
         btn.style.display = 'block';
@@ -795,6 +757,7 @@
       }
       tg.HapticFeedback.impactOccurred('light');
       showMessage(`+${gain} BC ♡`);
+      saveProgress();
     });
 
     hackUpgradeBtn.addEventListener('click', () => {
@@ -847,9 +810,9 @@
         lastMinerClaim = Date.now();
         updateBalance();
         updateMinerDisplay();
-        saveProgress();
         showMessage(`Забрано ${pending.toLocaleString()} BC из майнера ♡`);
         tg.HapticFeedback.impactOccurred('light');
+        saveProgress();
       }
     });
 
@@ -885,7 +848,7 @@
         };
         applyProgress(defaultData);
         if (userId !== 'guest') {
-          saveToServer();
+          await saveToServer();
         }
       }
 
