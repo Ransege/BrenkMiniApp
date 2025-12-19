@@ -1,5 +1,4 @@
 let bubbleInterval = null;
-const tg = window.Telegram.WebApp;
 
 async function initGame() {
   const serverData = await loadFromServer();
@@ -84,7 +83,7 @@ document.querySelectorAll('.field').forEach(btn => {
     document.getElementById('tap-overlay').style.display = 'flex';
     document.getElementById('tap-gain').textContent = window.game.getPerTap();
     document.getElementById('tap-level').textContent = window.game.hackLevel;
-    tg.HapticFeedback.impactOccurred('medium');
+    window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
     startBubbles();
   });
 });
@@ -100,7 +99,7 @@ document.getElementById('tap-circle').addEventListener('click', e => {
   const now = Date.now();
   if (now - lastTapTime < 100) {
     showMessage("Слишком быстро... ;)");
-    tg.HapticFeedback.impactOccurred('heavy');
+    window.Telegram.WebApp.HapticFeedback.impactOccurred('heavy');
     return;
   }
   lastTapTime = now;
@@ -123,7 +122,7 @@ document.getElementById('tap-circle').addEventListener('click', e => {
     setTimeout(() => createCoinParticle(x, y), i * 50);
   }
 
-  tg.HapticFeedback.impactOccurred('light');
+  window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
   showMessage(`+${gain} BC ♡`);
   window.game.save();
 });
@@ -172,7 +171,7 @@ document.getElementById('claim-miner').addEventListener('click', () => {
     updateBalance();
     updateMinerDisplay();
     showMessage(`Забрано ${pending.toLocaleString()} BC ♡`);
-    tg.HapticFeedback.impactOccurred('light');
+    window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
     window.game.save();
   }
 });
