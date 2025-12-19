@@ -441,7 +441,7 @@
     async function syncToServer() {
       if (userId === 'guest') return;
       const data = {
-        user484_id: userId,
+        user_id: userId,
         balance: bc,
         hack_level: hackLevel,
         limit_level: limitLevel,
@@ -468,32 +468,32 @@
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const data = JSON.parse(saved);
-        bc = data.bc ?? 0;
-        hackLevel = data.hackLevel ?? 1;
-        limitLevel = data.limitLevel ?? 0;
-        todayMined = data.todayMined ?? 0;
-        lastReset = data.lastReset ?? Date.now();
-        fieldsUnlocked = data.fieldsUnlocked ?? 1;
-        streak = data.streak ?? 0;
-        lastClaim = data.lastClaim ?? null;
-        minedDate = data.minedDate ?? new Date().toISOString().slice(0,10);
-        resetData = data.resetData ?? { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
-        minerLevel = data.minerLevel ?? 0;
-        lastMinerClaim = data.lastMinerClaim ?? Date.now();
+        bc = Number(data.bc) || 0;
+        hackLevel = Number(data.hackLevel) || 1;
+        limitLevel = Number(data.limitLevel) || 0;
+        todayMined = Number(data.todayMined) || 0;
+        lastReset = Number(data.lastReset) || Date.now();
+        fieldsUnlocked = Number(data.fieldsUnlocked) || 1;
+        streak = Number(data.streak) || 0;
+        lastClaim = data.lastClaim || null;
+        minedDate = data.minedDate || new Date().toISOString().slice(0,10);
+        resetData = data.resetData || { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
+        minerLevel = Number(data.minerLevel) || 0;
+        lastMinerClaim = Number(data.lastMinerClaim) || Date.now();
       }
     }
     function applyProgress(data) {
-      bc = data.balance || 0;
-      hackLevel = data.hack_level || 1;
-      limitLevel = data.limit_level || 0;
-      todayMined = data.today_mined || 0;
+      bc = Number(data.balance) || 0;
+      hackLevel = Number(data.hack_level) || 1;
+      limitLevel = Number(data.limit_level) || 0;
+      todayMined = Number(data.today_mined) || 0;
       minedDate = data.mined_date || new Date().toISOString().slice(0,10);
-      streak = data.streak || 0;
+      streak = Number(data.streak) || 0;
       lastClaim = data.last_claim || null;
-      fieldsUnlocked = data.fields_unlocked || 1;
+      fieldsUnlocked = Number(data.fields_unlocked) || 1;
       resetData = data.reset_data || { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
-      minerLevel = data.miner_level || 0;
-      lastMinerClaim = data.last_miner_claim || Date.now();
+      minerLevel = Number(data.miner_level) || 0;
+      lastMinerClaim = Number(data.last_miner_claim) || Date.now();
       updateBalance();
       updateDailyMined();
       checkDailyBonus();
@@ -596,7 +596,7 @@
       return Math.pow(2, level - 1) * 2 + (level - 2) * 4;
     }
     function updateBalance() {
-      bcAmount.textContent = bc.toLocaleString();
+      bcAmount.textContent = Number(bc).toLocaleString();
       saveProgress();
     }
     function resetDailyMining() {
@@ -612,7 +612,7 @@
         minedDate = today;
         resetData = { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
       }
-      dailyMined.textContent = todayMined.toLocaleString();
+      dailyMined.textContent = Number(todayMined).toLocaleString();
       const currentLimit = getCurrentLimit();
       dailyLimitSpan.textContent = currentLimit.toLocaleString();
       progressFill.style.width = `${Math.min(100, (todayMined / currentLimit) * 100)}%`;
@@ -793,8 +793,13 @@
         const next = minerLevel + 1;
         const cost = minerCosts[next];
         const nextRate = minerRates[next];
-        upgradeBtn.innerHTML = `⛏️ Уровень майнера: ${minerLevel} → ${next}<br><small>Добыча: ${rate} → ${nextRate} BC/час</small><br><strong>Стоимость: ${cost.toLocaleString()} BC</strong>`;
-        upgradeBtn.disabled = bc < cost;
+        if (bc < cost) {
+          upgradeBtn.innerHTML = `⛏️ Недостаточно BC (${cost.toLocaleString()} нужно)`;
+          upgradeBtn.disabled = true;
+        } else {
+          upgradeBtn.innerHTML = `⛏️ Уровень майнера: ${minerLevel} → ${next}<br><small>Добыча: ${rate} → ${nextRate} BC/час</small><br><strong>Стоимость: ${cost.toLocaleString()} BC</strong>`;
+          upgradeBtn.disabled = false;
+        }
       }
     }
     function createBubble() {
@@ -874,6 +879,10 @@
     hackUpgradeBtn.addEventListener('click', () => {
       if (hackUpgradeBtn.disabled) return;
       const cost = hackCosts[hackLevel];
+      if (bc < cost) {
+        showMessage("Недостаточно BC для улучшения ♡");
+        return;
+      }
       bc -= cost;
       hackLevel++;
       updateBalance();
@@ -884,6 +893,10 @@
     limitUpgradeBtn.addEventListener('click', () => {
       if (limitUpgradeBtn.disabled) return;
       const cost = limitCosts[limitLevel + 1];
+      if (bc < cost) {
+        showMessage("Недостаточно BC для улучшения лимита ♡");
+        return;
+      }
       bc -= cost;
       limitLevel++;
       updateBalance();
@@ -893,10 +906,13 @@
       saveProgress();
     });
     document.getElementById('miner-upgrade').addEventListener('click', () => {
-      const upgradeBtn = document.getElementById('miner-upgrade');
-      if (upgradeBtn.disabled) return;
+      if (minerLevel >= 5) return;
       const next = minerLevel + 1;
       const cost = minerCosts[next];
+      if (bc < cost) {
+        showMessage("Недостаточно BC для улучшения майнера ♡");
+        return;
+      }
       bc -= cost;
       minerLevel = next;
       if (minerLevel === 1) lastMinerClaim = Date.now();
@@ -906,8 +922,6 @@
       showMessage(`Майнер улучшен до уровня ${minerLevel}! Добыча ${minerRates[minerLevel]} BC/час ♡`);
     });
     document.getElementById('claim-miner').addEventListener('click', () => {
-      const claimBtn = document.getElementById('claim-miner');
-      if (claimBtn.disabled) return;
       const pending = calculatePendingMiner();
       if (pending > 0) {
         bc += pending;
@@ -920,9 +934,6 @@
       }
     });
     setInterval(() => {
-      if (resetLimitBtn.style.display === 'block') {
-        updateResetButtonVisibility(getCurrentLimit());
-      }
       updateMinerDisplay();
     }, 1000);
     setTimeout(() => document.getElementById('loader').classList.add('hidden'), 1500);
