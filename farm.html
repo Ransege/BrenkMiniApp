@@ -264,6 +264,42 @@
       0% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
       100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.3); }
     }
+    .leaderboard-btn {
+      width: 100%;
+      padding: 15px;
+      margin: 20px 0;
+      background: rgba(13,110,253,0.3);
+      border: 1px solid #0d6efd;
+      border-radius: 15px;
+      color: #90e6ff;
+      font-size: 1.3em;
+      text-align: center;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(13,110,253,0.4);
+    }
+    .leaderboard {
+      margin: 20px 0;
+      padding: 15px;
+      background: rgba(13,110,253,0.2);
+      border-radius: 15px;
+      display: none;
+    }
+    .leaderboard h3 {
+      text-align: center;
+      color: #0d6efd;
+      margin-bottom: 15px;
+    }
+    .leaderboard ol {
+      padding-left: 20px;
+      color: #e0f0ff;
+      font-size: 1.1em;
+    }
+    .leaderboard li {
+      margin: 8px 0;
+    }
+    .leaderboard li strong {
+      color: #ffd700;
+    }
   </style>
 </head>
 <body>
@@ -290,6 +326,16 @@
         <div class="daily-bonus" id="daily-bonus">Нажми, чтобы забрать ежедневный бонус!</div>
       
         <div class="brenk-message" id="brenk-msg"></div>
+
+        <button class="leaderboard-btn" id="leaderboard-btn">🏆 Топ-10 фармеров</button>
+
+        <div class="leaderboard" id="leaderboard">
+          <h3>🏆 Топ фармеров</h3>
+          <ol id="leaderboard-list">
+            <li>Загрузка...</li>
+          </ol>
+        </div>
+
         <div class="fields">
           <button class="field unlocked" data-field="1">🌐 Поле 1: Локальная сеть</button>
           <button class="field locked" data-field="2">🔒 Поле 2: Корпоративный сервер (требуется 5 000 BC)</button>
@@ -832,6 +878,36 @@
 
     window.addEventListener('unload', () => {
       saveToServer();
+    });
+
+    async function loadLeaderboard() {
+      try {
+        const res = await fetch(`${API_URL}?top=10`);
+        if (res.ok) {
+          const top = await res.json();
+          const list = document.getElementById('leaderboard-list');
+          list.innerHTML = '';
+          top.forEach((player, index) => {
+            const li = document.createElement('li');
+            li.innerHTML = `<strong>${index + 1}. </strong>${player.balance.toLocaleString()} BC`;
+            list.appendChild(li);
+          });
+        } else {
+          document.getElementById('leaderboard-list').innerHTML = '<li>Не удалось загрузить топ</li>';
+        }
+      } catch (e) {
+        document.getElementById('leaderboard-list').innerHTML = '<li>Сервер недоступен</li>';
+      }
+    }
+
+    document.getElementById('leaderboard-btn').addEventListener('click', () => {
+      const board = document.getElementById('leaderboard');
+      if (board.style.display === 'block') {
+        board.style.display = 'none';
+      } else {
+        board.style.display = 'block';
+        loadLeaderboard();
+      }
     });
 
     function hideLoader() {
