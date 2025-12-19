@@ -437,12 +437,12 @@
     async function loadFromServer() {
       if (userId === 'guest') return null;
       try {
-        const res = await fetch(`${API_URL}?user_id=${userId}`, { timeout: 5000 });
+        const res = await fetch(`${API_URL}?user_id=${userId}`);
         if (res.ok) {
           return await res.json();
         }
       } catch (e) {
-        console.log('Сервер недоступен или ошибка сети');
+        console.log('Сервер недоступен');
       }
       return null;
     }
@@ -910,16 +910,15 @@
     }, 1000);
 
     function hideLoader() {
-      document.getElementById('loader').classList.add('hidden');
+      const loader = document.getElementById('loader');
+      if (loader) loader.classList.add('hidden');
     }
 
     (async () => {
       let serverData = null;
       try {
         serverData = await loadFromServer();
-      } catch (e) {
-        console.log('Не удалось загрузить данные с сервера');
-      }
+      } catch (e) {}
 
       loadLocalProgress();
 
@@ -934,7 +933,20 @@
         }
       }
 
-      applyProgress({balance: bc, hack_level: hackLevel, limit_level: limitLevel, today_mined: todayMined, mined_date: minedDate, streak: streak, last_claim: lastClaim, fields_unlocked: fieldsUnlocked, last_free_reset: lastFreeReset, miner_level: minerLevel, last_miner_claim: lastMinerClaim});
+      const progressData = {
+        balance: bc,
+        hack_level: hackLevel,
+        limit_level: limitLevel,
+        today_mined: todayMined,
+        mined_date: minedDate,
+        streak: streak,
+        last_claim: lastClaim,
+        fields_unlocked: fieldsUnlocked,
+        last_free_reset: lastFreeReset,
+        miner_level: minerLevel,
+        last_miner_claim: lastMinerClaim
+      };
+      applyProgress(progressData);
       hideLoader();
     })();
 
