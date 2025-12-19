@@ -373,17 +373,23 @@
     async function loadFromServer() {
       if (userId === 'guest') return null;
       try {
-        const res = await fetch(`${API_URL}?user_id=${userId}`, { cache: 'no-store' });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch(`${API_URL}?user_id=${userId}`, {
+          signal: controller.signal,
+          cache: 'no-store'
+        });
+        clearTimeout(timeoutId);
         if (res.ok) {
           return await res.json();
         }
       } catch (e) {
-        console.log('Сервер недоступен');
+        console.log('Сервер недоступен или таймаут');
       }
       return null;
     }
 
-    async function saveToServer() {
+    async function saveToServer(force = false) {
       if (userId === 'guest') return;
       const data = {
         user_id: userId,
@@ -406,13 +412,17 @@
           body: JSON.stringify(data)
         });
       } catch (e) {
-        console.log('Ошибка отправки на сервер');
+        if (force) console.log('Не удалось сохранить на сервер даже принудительно');
       }
     }
 
-    function saveProgress() {
+    function saveProgress(force = false) {
       if (saveTimeout) clearTimeout(saveTimeout);
-      saveTimeout = setTimeout(saveToServer, 2000);
+      if (force) {
+        saveToServer(true);
+      } else {
+        saveTimeout = setTimeout(() => saveToServer(true), 2000);
+      }
     }
 
     function applyProgress(data) {
@@ -486,7 +496,7 @@
       updateDailyMined();
       showMessage('Лимит обновлён бесплатно! Доступно снова через 24 часа ♡');
       tg.HapticFeedback.impactOccurred('soft');
-      saveProgress();
+      saveProgress(true);
     });
 
     const bcAmount = document.getElementById('bc-amount');
@@ -563,7 +573,7 @@
           showMessage(`С возвращением! ♡ +${bonus.toLocaleString()} BC`);
           dailyBonusBtn.innerHTML = "Бонус получен. Жду завтра за большим...";
           dailyBonusBtn.onclick = null;
-          saveProgress();
+          saveProgress(true);
         };
       } else {
         dailyBonusBtn.innerHTML = "Бонус уже получен сегодня. Возвращайся завтра ♡";
@@ -757,7 +767,7 @@
       }
       tg.HapticFeedback.impactOccurred('light');
       showMessage(`+${gain} BC ♡`);
-      saveProgress();
+      saveProgress(true);
     });
 
     hackUpgradeBtn.addEventListener('click', () => {
@@ -769,7 +779,7 @@
       updateBalance();
       updateHackUpgrade();
       showMessage(`Уровень взлома повышен до ${hackLevel}! Теперь +${getPerTap(hackLevel)} BC за тап ♡`);
-      saveProgress();
+      saveProgress(true);
     });
 
     limitUpgradeBtn.addEventListener('click', () => {
@@ -784,7 +794,7 @@
       updateDailyMined();
       updateLimitUpgrade();
       showMessage(`Лимит повышен! Теперь можно добыть до ${getCurrentLimit()} BC в день ♡`);
-      saveProgress();
+      saveProgress(true);
     });
 
     document.getElementById('miner-upgrade').addEventListener('click', () => {
@@ -800,7 +810,7 @@
       updateBalance();
       updateMinerDisplay();
       showMessage(`Майнер улучшен до уровня ${minerLevel}! Добыча ${minerRates[minerLevel]} BC/час ♡`);
-      saveProgress();
+      saveProgress(true);
     });
 
     document.getElementById('claim-miner').addEventListener('click', () => {
@@ -812,7 +822,7 @@
         updateMinerDisplay();
         showMessage(`Забрано ${pending.toLocaleString()} BC из майнера ♡`);
         tg.HapticFeedback.impactOccurred('light');
-        saveProgress();
+        saveProgress(true);
       }
     });
 
@@ -820,15 +830,26 @@
       updateMinerDisplay();
     }, 1000);
 
+    window.addEventListener('beforeunload', () => {
+      saveProgress(true);
+    });
+
     function hideLoader() {
       document.getElementById('loader').classList.add('hidden');
     }
 
     (async () => {
       let serverData = null;
-      try {
+      let attempts = 0;
+      const maxAttempts = 3;
+
+      while (attempts < maxAttempts && !serverData) {
         serverData = await loadFromServer();
-      } catch (e) {}
+        if (!serverData) {
+          attempts++;
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
 
       if (serverData) {
         applyProgress(serverData);
@@ -848,8 +869,9 @@
         };
         applyProgress(defaultData);
         if (userId !== 'guest') {
-          await saveToServer();
+          saveProgress(true);
         }
+        showMessage("Сервер недоступен. Используем новые данные. Попробуйте позже.");
       }
 
       hideLoader();
