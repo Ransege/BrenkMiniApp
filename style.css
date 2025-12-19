@@ -21,82 +21,61 @@ body::before {
     radial-gradient(circle at 20% 30%, transparent 8px, #90e6ff 9px, transparent 10px),
     radial-gradient(circle at 60% 70%, transparent 7px, #ffffff 8px, transparent 9px),
     radial-gradient(circle at 80% 20%, transparent 9px, #e0f0ff 10px, transparent 11px);
-  background-size: 150px 150px, 180px 180px, 160px 160px;
-  background-position: 0 0, 50px 100px, 100px 50px;
-  animation: snowfall 25s linear infinite;
-  opacity: 0.5;
-  z-index: -1;
+  background-size: 50px 50px;
+  opacity: 0.15;
+  animation: float 20s ease-in-out infinite;
 }
 
-@keyframes snowfall {
-  0% { background-position: 0 0, 50px 100px, 100px 50px; }
-  100% { background-position: 0 100vh, 50px calc(100px + 100vh), 100px calc(50px + 100vh); }
+@keyframes float {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+  100% { transform: translateY(0); }
 }
 
-body::after {
-  content: "";
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  pointer-events: none;
-  background: 
-    radial-gradient(circle at 40% 50%, transparent 10px, #ffffff 11px, transparent 12px),
-    radial-gradient(circle at 75% 85%, transparent 8px, #90e6ff 9px, transparent 10px);
-  background-size: 200px 200px, 220px 220px;
-  background-position: 0 0, 80px 120px;
-  animation: snowfall-slow 40s linear infinite;
-  opacity: 0.3;
-  z-index: -1;
-}
-
-@keyframes snowfall-slow {
-  0% { background-position: 0 0, 80px 120px; }
-  100% { background-position: 0 100vh, 80px calc(120px + 100vh); }
-}
-
-header {
+.container {
+  max-width: 800px;
+  margin: 0 auto;
   text-align: center;
-  margin-bottom: 40px;
-  padding-top: 20px
 }
 
-h1 {
+header h1 {
   font-family: 'Orbitron', sans-serif;
-  font-size: 3.5em;
-  background: linear-gradient(90deg, #1C8BC0, #90E6FF);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-size: 2.5em;
   margin-bottom: 10px;
+  text-shadow: 0 0 20px #0d6efd;
 }
 
 .subtitle {
   font-size: 1.2em;
-  opacity: 0.8;
-  font-weight: 300;
+  opacity: 0.9;
+  margin-bottom: 30px;
 }
 
-.card {
-  background: rgba(13, 110, 253, 0.1);
-  border: 1px solid rgba(13, 110, 253, 0.3);
+section {
+  margin: 40px 0;
+  padding: 20px;
+  background: rgba(0,0,0,0.3);
   border-radius: 20px;
-  padding: 25px;
-  margin: 20px 0;
   backdrop-filter: blur(10px);
 }
 
-.card h2 {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 1.8em;
-  margin-bottom: 15px;
-  color: #0d6efd;
-  text-align: center;
+.features ul {
+  text-align: left;
+  max-width: 600px;
+  margin: 20px auto;
 }
 
-.modes .mode {
-  margin: 20px 0;
+.price-list, .comments {
+  text-align: left;
+  max-width: 600px;
+  margin: 20px auto;
+}
+
+.price-list > div, .comments blockquote {
+  margin: 15px 0;
   padding: 15px;
+  background: rgba(13,110,253,0.2);
   border-radius: 15px;
-  background: rgba(0,0,0,0.3);
 }
 
 .label {
