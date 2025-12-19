@@ -2,12 +2,19 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Brenk-Coin Farm</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="style.css" />
   <style>
-    body { padding: 10px; }
+    body {
+      padding: 0;
+      margin: 0;
+      min-height: 100vh;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
     .loader-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -21,6 +28,7 @@
       transition: opacity 0.8s ease;
     }
     .loader-overlay.hidden { opacity: 0; pointer-events: none; }
+
     .loader {
       width: 80px;
       height: 80px;
@@ -38,265 +46,197 @@
       text-shadow: 0 0 20px #0d6efd;
       animation: pulse 2s ease infinite;
     }
+
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     @keyframes pulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
-    #balance-display {
-      font-size: 2em;
+
+    .game-container {
+      min-height: 100vh;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .game-header {
       text-align: center;
-      margin: 20px 0;
+      padding: 15px;
+      background: rgba(0,0,0,0.4);
+      border-radius: 20px;
+      margin-bottom: 15px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 20px rgba(13,110,253,0.3);
+    }
+    .game-header h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 2em;
+      color: #90e6ff;
+      text-shadow: 0 0 15px #0d6efd;
+      margin: 0;
+    }
+    #balance-display {
+      font-size: 2.2em;
+      margin: 15px 0;
       color: #90e6ff;
       text-shadow: 0 0 20px #0d6efd;
     }
-    .daily-limit {
+
+    .daily-info {
+      background: rgba(13,110,253,0.2);
+      padding: 15px;
+      border-radius: 15px;
       text-align: center;
-      margin: 15px 0;
-      font-size: 1.1em;
-      opacity: 0.9;
+      margin-bottom: 15px;
+      backdrop-filter: blur(5px);
     }
     .progress-bar {
       width: 100%;
-      height: 20px;
-      background: rgba(0,0,0,0.4);
-      border-radius: 10px;
+      height: 25px;
+      background: rgba(0,0,0,0.5);
+      border-radius: 15px;
       overflow: hidden;
-      margin: 10px 0;
+      margin: 15px 0;
+      box-shadow: 0 0 15px rgba(13,110,253,0.3);
     }
     .progress-fill {
       height: 100%;
       width: 0%;
       background: linear-gradient(90deg, #0d6efd, #8a2be2);
-      transition: width 0.4s ease;
+      transition: width 0.6s ease;
+      box-shadow: 0 0 20px #0d6efd;
     }
-    .daily-bonus {
-      text-align: center;
-      padding: 15px;
-      background: rgba(13,110,253,0.3);
-      border-radius: 15px;
-      margin: 15px 0;
-      font-size: 1.3em;
-      cursor: pointer;
+
+    .game-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
     }
-    .reset-limit-btn {
-      text-align: center;
-      padding: 12px;
-      background: rgba(13,110,253,0.25);
-      border: 1px solid #0d6efd;
-      border-radius: 15px;
-      margin: 12px 0;
-      font-size: 1.1em;
-      color: #90e6ff;
-      cursor: pointer;
-      box-shadow: 0 0 15px rgba(13,110,253,0.3);
-      transition: all 0.3s ease;
-      display: none;
+
+    .card {
+      background: rgba(0,0,0,0.4);
+      border-radius: 20px;
+      padding: 20px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 25px rgba(13,110,253,0.2);
     }
-    .reset-limit-btn:hover:not(:disabled) {
-      background: rgba(13,110,253,0.4);
-      box-shadow: 0 0 25px rgba(13,110,253,0.6);
-      transform: translateY(-2px);
-    }
-    .reset-limit-btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      background: rgba(100,100,100,0.2);
-      border-color: #555;
-      box-shadow: none;
+
+    .fields {
+      display: grid;
+      gap: 12px;
     }
     .field {
-      width: 100%;
-      padding: 20px;
-      margin: 15px 0;
-      background: rgba(0,0,0,0.4);
+      padding: 22px;
+      font-size: 1.3em;
+      background: rgba(10,20,40,0.6);
       border: 2px solid #0a3d62;
-      border-radius: 15px;
-      color: #e0f0ff;
-      font-size: 1.2em;
-      cursor: pointer;
-      transition: all 0.3s;
-      position: relative;
-      overflow: hidden;
+      border-radius: 18px;
+      transition: all 0.4s ease;
+      box-shadow: 0 0 15px rgba(0,0,0,0.5);
     }
-    .field.unlocked:hover {
+    .field.unlocked {
       border-color: #0d6efd;
-      box-shadow: 0 0 25px rgba(13,110,253,0.7);
-      transform: translateY(-5px);
+      box-shadow: 0 0 30px rgba(13,110,253,0.6);
+      transform: scale(1.02);
+    }
+    .field.unlocked:active {
+      transform: scale(0.98);
     }
     .field.locked {
-      opacity: 0.5;
-      cursor: not-allowed;
+      opacity: 0.6;
       border-style: dashed;
     }
-    .field::after {
-      content: '';
-      position: absolute;
-      top: 0; left: -100%;
-      width: 100%; height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(13,110,253,0.2), transparent);
-      animation: scan 4s linear infinite;
+
+    .upgrades h3 {
+      text-align: center;
+      color: #0d6efd;
+      margin: 25px 0 15px;
+      font-size: 1.6em;
+      text-shadow: 0 0 15px #0d6efd;
     }
-    @keyframes scan { 0% { left: -100%; } 100% { left: 100%; } }
     .upgrade-btn {
-      width: 100%;
-      padding: 15px;
-      margin: 10px 0;
-      background: rgba(13,110,253,0.2);
-      border: 1px solid #0d6efd;
-      border-radius: 12px;
-      color: #90e6ff;
-      cursor: pointer;
-      transition: all 0.3s;
+      padding: 18px;
+      font-size: 1.2em;
+      background: rgba(13,110,253,0.25);
+      border: 2px solid #0d6efd;
+      border-radius: 18px;
+      box-shadow: 0 0 20px rgba(13,110,253,0.4);
+      transition: all 0.4s;
     }
-    .upgrade-btn:hover:not(:disabled) { background: rgba(13,110,253,0.4); box-shadow: 0 0 15px #0d6efd; }
+    .upgrade-btn:hover:not(:disabled), .upgrade-btn:active:not(:disabled) {
+      background: rgba(13,110,253,0.5);
+      transform: translateY(-3px);
+      box-shadow: 0 0 35px rgba(13,110,253,0.8);
+    }
     .upgrade-btn:disabled {
       opacity: 0.5;
-      cursor: not-allowed;
-      background: rgba(100,100,100,0.2);
       border-color: #555;
     }
-    .brenk-message {
-      margin: 15px 0;
-      padding: 15px;
-      background: rgba(13,110,253,0.3);
-      border-radius: 15px;
-      font-style: italic;
+
+    .miner-status {
       text-align: center;
+      padding: 20px;
+      background: rgba(13,110,253,0.2);
+      border-radius: 18px;
+      margin-top: 15px;
+      font-size: 1.2em;
     }
+
     .back-btn {
-      margin: 40px auto 20px;
-      padding: 14px 40px;
-      background: rgba(13, 110, 253, 0.4);
-      border: 2px solid #0d6efd;
-      color: white;
-      border-radius: 50px;
-      font-size: 1.1em;
-      cursor: pointer;
-      display: block;
+      margin: 30px auto;
+      padding: 16px 50px;
+      font-size: 1.3em;
+      background: rgba(13,110,253,0.5);
+      border: 3px solid #0d6efd;
+      box-shadow: 0 0 30px rgba(13,110,253,0.6);
     }
+
     .tap-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(10, 0, 26, 0.98);
+      background: radial-gradient(circle at center, #0a001a, #000);
       display: none;
       flex-direction: column;
       justify-content: center;
       align-items: center;
       z-index: 9999;
-      overflow: hidden;
     }
     .glass-sphere {
-      width: 280px;
-      height: 280px;
-      position: relative;
+      width: 320px;
+      height: 320px;
       border-radius: 50%;
-      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3), transparent 60%);
-      border: 6px solid rgba(255, 255, 255, 0.2);
-      box-shadow: 0 0 60px rgba(13, 110, 253, 0.8), inset 0 0 40px rgba(255, 255, 255, 0.1);
-      overflow: hidden;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4), transparent 60%);
+      border: 8px solid rgba(255,255,255,0.3);
+      box-shadow: 0 0 80px rgba(13,110,253,1), inset 0 0 60px rgba(255,255,255,0.2);
       cursor: pointer;
     }
     .liquid {
-      position: absolute;
       bottom: 0;
-      left: 0;
-      right: 0;
       background: linear-gradient(to top, #0d6efd, #8a2be2);
-      height: 100%;
-      transition: height 1.5s ease;
-      border-radius: 50%;
-      box-shadow: 0 0 40px #0d6efd;
-    }
-    .liquid::before {
-      content: '';
-      position: absolute;
-      top: -30px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 180px;
-      height: 60px;
-      background: rgba(255, 255, 255, 0.4);
-      border-radius: 50%;
-      filter: blur(20px);
-    }
-    .bubble {
-      position: absolute;
-      background: rgba(255, 255, 255, 0.4);
-      border-radius: 50%;
-      pointer-events: none;
-      opacity: 0.6;
-      animation: bubbleRise linear infinite;
-    }
-    @keyframes bubbleRise {
-      0% { transform: translateY(0) scale(0.5); opacity: 0; }
-      20% { opacity: 0.6; }
-      100% { transform: translateY(-300px) scale(1.2); opacity: 0; }
+      box-shadow: 0 0 60px #0d6efd;
     }
     .tap-info {
-      margin-top: 30px;
-      text-align: center;
-      color: #90e6ff;
-      font-size: 1.4em;
+      margin-top: 40px;
+      font-size: 1.8em;
+      text-shadow: 0 0 20px #0d6efd;
     }
     .close-tap {
-      margin-top: 40px;
-      padding: 12px 40px;
-      background: rgba(13,110,253,0.4);
-      border: 2px solid #0d6efd;
-      color: white;
-      border-radius: 50px;
-      cursor: pointer;
+      margin-top: 50px;
+      padding: 16px 50px;
+      font-size: 1.3em;
+      background: rgba(13,110,253,0.5);
+      border: 3px solid #0d6efd;
+      box-shadow: 0 0 30px rgba(13,110,253,0.6);
     }
-    .coin-particle {
-      position: absolute;
-      font-size: 2em;
-      color: #ffd700;
-      pointer-events: none;
-      opacity: 0;
-      animation: coinFly 1.2s ease-out forwards;
-      z-index: 99999;
-    }
-    @keyframes coinFly {
-      0% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
-      100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.3); }
-    }
+
     #sync-modal {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.95);
-      display: none;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 10000;
-      padding: 20px;
-      text-align: center;
-      color: white;
-    }
-    #sync-modal h2 {
-      color: #0d6efd;
-      margin-bottom: 20px;
-      font-size: 1.8em;
-    }
-    #sync-modal p {
-      font-size: 1.4em;
-      margin-bottom: 30px;
+      background: rgba(0,0,0,0.95);
+      backdrop-filter: blur(10px);
     }
     #sync-modal button {
-      padding: 15px 30px;
-      margin: 10px;
-      border-radius: 15px;
-      font-size: 1.2em;
-      cursor: pointer;
-      min-width: 200px;
-    }
-    #sync-modal button:first-child {
-      background: #0d6efd;
-      border: none;
-      color: white;
-    }
-    #sync-modal button:last-child {
-      background: rgba(255,255,255,0.15);
-      border: 1px solid #90e6ff;
-      color: #90e6ff;
+      padding: 18px 40px;
+      font-size: 1.4em;
+      border-radius: 20px;
+      box-shadow: 0 0 25px rgba(13,110,253,0.6);
     }
   </style>
 </head>
@@ -305,6 +245,7 @@
     <div class="loader"></div>
     <div class="loader-text">Загрузка сети Brenk-Coin</div>
   </div>
+
   <div id="sync-modal">
     <h2>Обнаружен сохранённый прогресс!</h2>
     <p>На сервере найден прогресс:<br>
@@ -316,73 +257,68 @@
       <button onclick="continueLocal()">Продолжить локально</button>
     </div>
   </div>
-  <div class="container">
-    <header>
+
+  <div class="game-container">
+    <div class="game-header">
       <h1>Brenk-Coin Farm</h1>
-      <p class="subtitle">Тапай по сфере и добывай BC ♡</p>
-    </header>
-    <main>
+      <div id="balance-display">Brenk-Coin: <span id="bc-amount">0</span></div>
+    </div>
+
+    <div class="daily-info">
+      <div>Добыто сегодня: <span id="daily-mined">0</span> / <span id="daily-limit">5000</span> BC</div>
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+      <button class="reset-limit-btn" id="reset-limit-btn">🔄 Обновить лимит</button>
+      <div class="daily-bonus" id="daily-bonus">Нажми, чтобы забрать ежедневный бонус!</div>
+    </div>
+
+    <div class="brenk-message" id="brenk-msg"></div>
+
+    <div class="game-content">
       <div class="card">
-        <div id="balance-display">Brenk-Coin: <span id="bc-amount">0</span></div>
-        <div class="daily-limit">
-          Добыто сегодня: <span id="daily-mined">0</span> / <span id="daily-limit">5000</span> BC
-          <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-        </div>
-        <button class="reset-limit-btn" id="reset-limit-btn">
-          🔄 Обновить лимит (бесплатно)
-        </button>
-        <div class="daily-bonus" id="daily-bonus">Нажми, чтобы забрать ежедневный бонус!</div>
-      
-        <div class="brenk-message" id="brenk-msg"></div>
         <div class="fields">
           <button class="field unlocked" data-field="1">🌐 Поле 1: Локальная сеть</button>
-          <button class="field locked" data-field="2">🔒 Поле 2: Корпоративный сервер (требуется 5 000 BC)</button>
-          <button class="field locked" data-field="3">💾 Поле 3: Банк данных (требуется 20 000 BC)</button>
-          <button class="field locked" data-field="4">🛡️ Поле 4: Правительственная сеть (требуется 100 000 BC)</button>
-          <button class="field locked" data-field="5">💜 Поле 5: Мои личные файлы... (требуется 500 000 BC)</button>
+          <button class="field locked" data-field="2">🔒 Поле 2: Корпоративный сервер</button>
+          <button class="field locked" data-field="3">💾 Поле 3: Банк данных</button>
+          <button class="field locked" data-field="4">🛡️ Поле 4: Правительственная сеть</button>
+          <button class="field locked" data-field="5">💜 Поле 5: Мои личные файлы...</button>
         </div>
-        <h3 style="margin: 30px 0 15px; color: #0d6efd;">Уровень взлома</h3>
+      </div>
+
+      <div class="card">
+        <h3>Уровень взлома</h3>
         <div class="upgrades">
-          <button class="upgrade-btn" id="hack-upgrade">
-            🔓 Уровень взлома: <span id="hack-level">1</span> → <span id="next-level">2</span><br>
-            <small>За тап: <span id="per-tap">1</span> BC → <span id="next-per-tap">6</span> BC</small><br>
-            <strong>Стоимость: <span id="upgrade-cost">2000</span> BC</strong>
-          </button>
+          <button class="upgrade-btn" id="hack-upgrade">Загрузка...</button>
         </div>
-        <h3 style="margin: 30px 0 15px; color: #0d6efd;">Увеличение лимита</h3>
+
+        <h3>Увеличение лимита</h3>
         <div class="upgrades">
-          <button class="upgrade-btn" id="limit-upgrade">
-            ⬆️ Уровень лимита: <span id="limit-level">0</span> → <span id="next-limit-level">1</span><br>
-            <small>Лимит: <span id="current-limit">5000</span> → <span id="next-limit">7000</span> BC</small><br>
-            <strong>Стоимость: <span id="limit-cost">2000</span> BC</strong>
-          </button>
+          <button class="upgrade-btn" id="limit-upgrade">Загрузка...</button>
         </div>
-        <h3 style="margin: 30px 0 15px; color: #0d6efd;">Майнер</h3>
+
+        <h3>Майнер</h3>
         <div class="upgrades">
-          <button class="upgrade-btn" id="miner-upgrade">
-            ⛏️ Улучшить майнер до уровня 1<br>
-            <small>Добыча: 0 → 300 BC/час</small><br>
-            <strong>Стоимость: 500 BC</strong>
-          </button>
+          <button class="upgrade-btn" id="miner-upgrade">Загрузка...</button>
         </div>
         <div class="miner-status">
-          Текущая добыча: <span id="miner-rate">0</span> BC/час (макс за 6 часов)<br>
+          Добыча: <span id="miner-rate">0</span> BC/час<br>
           Накоплено: <span id="pending-miner">0</span> BC<br>
           <button class="upgrade-btn" id="claim-miner">Забрать</button>
         </div>
-        <button class="back-btn" onclick="window.location.href='index.html'">← Вернуться в меню</button>
       </div>
-    </main>
+
+      <button class="back-btn" onclick="window.location.href='index.html'">← В меню</button>
+    </div>
   </div>
+
   <div class="tap-overlay" id="tap-overlay">
     <div class="glass-sphere" id="tap-circle">
       <div class="liquid" id="liquid"></div>
     </div>
     <div class="tap-info">
       +<span id="tap-gain">1</span> BC за тап<br>
-      Уровень взлома: <span id="tap-level">1</span>
+      Уровень: <span id="tap-level">1</span>
     </div>
-    <button class="close-tap" onclick="closeTap()">← Назад к полям</button>
+    <button class="close-tap" onclick="closeTap()">← Назад</button>
   </div>
   <script>
     const tg = window.Telegram.WebApp;
