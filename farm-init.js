@@ -1,4 +1,5 @@
 let bubbleInterval = null;
+const tg = window.Telegram.WebApp;
 
 async function initGame() {
   const serverData = await loadFromServer();
@@ -97,11 +98,15 @@ function closeTap() {
 let lastTapTime = 0;
 document.getElementById('tap-circle').addEventListener('click', e => {
   const now = Date.now();
-  if (now - lastTapTime < 100) return;
+  if (now - lastTapTime < 100) {
+    showMessage("Слишком быстро... ;)");
+    tg.HapticFeedback.impactOccurred('heavy');
+    return;
+  }
   lastTapTime = now;
 
   if (window.game.todayMined >= window.game.getCurrentLimit()) {
-    showMessage("Лимит исчерпан ♡");
+    showMessage("Лимит на сегодня исчерпан ♡");
     return;
   }
 
@@ -112,7 +117,6 @@ document.getElementById('tap-circle').addEventListener('click', e => {
   updateDailyMined();
   unlockFields();
 
-  const rect = e.target.getBoundingClientRect();
   const x = e.clientX;
   const y = e.clientY;
   for (let i = 0; i < window.game.hackLevel; i++) {
@@ -131,7 +135,7 @@ document.getElementById('hack-upgrade').addEventListener('click', () => {
   window.game.hackLevel++;
   updateBalance();
   updateHackUpgrade();
-  showMessage(`Уровень взлома ${window.game.hackLevel}! +${window.game.getPerTap()} BC за тап ♡`);
+  showMessage(`Уровень взлома повышен до ${window.game.hackLevel}! +${window.game.getPerTap()} BC за тап ♡`);
   window.game.save();
 });
 
