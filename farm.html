@@ -258,7 +258,6 @@
       0% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
       100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.3); }
     }
- 
     #sync-modal {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -333,7 +332,7 @@
           🔄 Обновить лимит (бесплатно)
         </button>
         <div class="daily-bonus" id="daily-bonus">Нажми, чтобы забрать ежедневный бонус!</div>
-       
+      
         <div class="brenk-message" id="brenk-msg"></div>
         <div class="fields">
           <button class="field unlocked" data-field="1">🌐 Поле 1: Локальная сеть</button>
@@ -534,7 +533,19 @@
       if (!serverData || bc >= (serverData.balance || 0)) {
         loadLocalProgress();
       }
-      applyProgress({ balance: bc, hack_level: hackLevel, limit_level: limitLevel, today_mined: todayMined, mined_date: minedDate, streak: streak, last_claim: lastClaim, fields_unlocked: fieldsUnlocked, reset_data: resetData, miner_level: minerLevel, last_miner_claim: lastMinerClaim });
+      applyProgress({ 
+        balance: bc, 
+        hack_level: hackLevel, 
+        limit_level: limitLevel, 
+        today_mined: todayMined, 
+        mined_date: minedDate, 
+        streak: streak, 
+        last_claim: lastClaim, 
+        fields_unlocked: fieldsUnlocked, 
+        reset_data: resetData, 
+        miner_level: minerLevel, 
+        last_miner_claim: lastMinerClaim 
+      });
       document.getElementById('loader').classList.add('hidden');
     })();
     function loadServerProgress() {
