@@ -335,7 +335,7 @@
           <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
         </div>
         <button class="reset-limit-btn" id="reset-limit-btn">
-          🔄 Обновить лимит (бесплатно 1 раз в день)
+          🔄 Обновить лимит (бесплатно)
         </button>
         <div class="daily-bonus" id="daily-bonus">Нажми, чтобы забрать ежедневный бонус!</div>
       
@@ -422,7 +422,7 @@
     let lastClaim = null;
     let todayMined = 0;
     let minedDate = new Date().toISOString().slice(0,10);
-    let lastFreeReset = 0;
+    let resetData = { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
     let minerLevel = 0;
     let lastMinerClaim = Date.now();
     const BASE_LIMIT = 5000;
@@ -459,9 +459,9 @@
         streak: streak,
         last_claim: lastClaim,
         fields_unlocked: fieldsUnlocked,
+        reset_data: resetData,
         miner_level: minerLevel,
-        last_miner_claim: lastMinerClaim,
-        last_free_reset: lastFreeReset
+        last_miner_claim: lastMinerClaim
       };
       try {
         await fetch(API_URL, {
@@ -478,7 +478,7 @@
       if (saveTimeout) clearTimeout(saveTimeout);
       saveTimeout = setTimeout(() => {
         const data = {
-          bc, hackLevel, limitLevel, todayMined, fieldsUnlocked, streak, lastClaim, minedDate, lastFreeReset, minerLevel, lastMinerClaim
+          bc, hackLevel, limitLevel, todayMined, fieldsUnlocked, streak, lastClaim, minedDate, resetData, minerLevel, lastMinerClaim
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         syncToServer();
@@ -501,7 +501,7 @@
         streak = Number(data.streak) || 0;
         lastClaim = data.lastClaim || null;
         minedDate = data.minedDate || new Date().toISOString().slice(0,10);
-        lastFreeReset = Number(data.lastFreeReset) || 0;
+        resetData = data.resetData || { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
         minerLevel = Number(data.minerLevel) || 0;
         lastMinerClaim = Number(data.lastMinerClaim) || Date.now();
       }
@@ -516,7 +516,7 @@
       streak = Number(data.streak) || 0;
       lastClaim = data.last_claim || null;
       fieldsUnlocked = Number(data.fields_unlocked) || 1;
-      lastFreeReset = Number(data.last_free_reset) || 0;
+      resetData = data.reset_data || { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
       minerLevel = Number(data.miner_level) || 0;
       lastMinerClaim = Number(data.last_miner_claim) || Date.now();
 
@@ -527,7 +527,7 @@
       updateHackUpgrade();
       updateLimitUpgrade();
       updateMinerDisplay();
-      updateFreeResetButton();
+      updateResetButtonVisibility(getCurrentLimit());
     }
 
     function showMessage(text) {
@@ -535,49 +535,6 @@
       msg.textContent = text;
       setTimeout(() => msg.textContent = '', 4000);
     }
-
-    function formatTime(seconds) {
-      const h = Math.floor(seconds / 3600);
-      const m = Math.floor((seconds % 3600) / 60);
-      const s = seconds % 60;
-      return `${h ? h + 'ч ' : ''}${m.toString().padStart(2, '0')}м ${s.toString().padStart(2, '0')}с`;
-    }
-
-    function updateFreeResetButton() {
-      const currentLimit = getCurrentLimit();
-      if (todayMined < currentLimit) {
-        resetLimitBtn.style.display = 'none';
-        return;
-      }
-
-      const now = Date.now();
-      const dayMs = 24 * 60 * 60 * 1000;
-      const timeSinceLast = now - lastFreeReset;
-
-      if (timeSinceLast >= dayMs) {
-        resetLimitBtn.textContent = '🔄 Обновить лимит (бесплатно 1 раз в день)';
-        resetLimitBtn.disabled = false;
-        resetLimitBtn.style.display = 'block';
-      } else {
-        const remainingSec = Math.ceil((dayMs - timeSinceLast) / 1000);
-        const h = Math.floor(remainingSec / 3600);
-        const m = Math.floor((remainingSec % 3600) / 60);
-        const s = remainingSec % 60;
-        resetLimitBtn.textContent = `Жди ${h ? h + 'ч ' : ''}${m.toString().padStart(2,'0')}м ${s.toString().padStart(2,'0')}с`;
-        resetLimitBtn.disabled = true;
-        resetLimitBtn.style.display = 'block';
-      }
-    }
-
-    resetLimitBtn.addEventListener('click', () => {
-      if (resetLimitBtn.disabled) return;
-      todayMined = 0;
-      lastFreeReset = Date.now();
-      updateDailyMined();
-      showMessage('Лимит обновлён бесплатно! Доступно снова через 24 часа ♡');
-      tg.HapticFeedback.impactOccurred('soft');
-      saveProgress();
-    });
 
     const bcAmount = document.getElementById('bc-amount');
     const dailyMined = document.getElementById('daily-mined');
@@ -628,6 +585,7 @@
       if (minedDate !== today) {
         todayMined = 0;
         minedDate = today;
+        resetData = { resetsToday: 0, lastResetTime: 0, cycleStartTime: 0 };
       }
       dailyMined.textContent = todayMined.toLocaleString();
       const currentLimit = getCurrentLimit();
@@ -635,8 +593,57 @@
       progressFill.style.width = `${Math.min(100, (todayMined / currentLimit) * 100)}%`;
       const fillPercent = 100 - (todayMined / currentLimit) * 100;
       liquid.style.height = `${Math.max(0, fillPercent)}%`;
-      updateFreeResetButton();
+      updateResetButtonVisibility(currentLimit);
       saveProgress();
+    }
+
+    function formatTime(seconds) {
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = seconds % 60;
+      return `${h ? h + 'ч ' : ''}${m.toString().padStart(2, '0')}м ${s.toString().padStart(2, '0')}с`;
+    }
+
+    function updateResetButtonVisibility(currentLimit) {
+      if (todayMined < currentLimit) {
+        resetLimitBtn.style.display = 'none';
+        return;
+      }
+      const now = Date.now();
+      if (resetData.resetsToday >= 3) {
+        const timeSinceCycle = now - resetData.cycleStartTime;
+        const cooldown12h = 12 * 60 * 60 * 1000;
+        if (timeSinceCycle < cooldown12h) {
+          const remaining = Math.ceil((cooldown12h - timeSinceCycle) / 1000);
+          resetLimitBtn.textContent = `Жди ${formatTime(remaining)} до новых 3 попыток`;
+          resetLimitBtn.disabled = true;
+          resetLimitBtn.style.display = 'block';
+          return;
+        } else {
+          resetData.resetsToday = 0;
+          resetData.lastResetTime = 0;
+          resetData.cycleStartTime = 0;
+        }
+      }
+      const nextResetNum = resetData.resetsToday + 1;
+      let waitTime = 0;
+      if (nextResetNum === 2) waitTime = 2 * 60 * 60 * 1000;
+      else if (nextResetNum === 3) waitTime = 6 * 60 * 60 * 1000;
+      if (waitTime > 0) {
+        const timeSinceLast = now - resetData.lastResetTime;
+        if (timeSinceLast < waitTime) {
+          const remaining = Math.ceil((waitTime - timeSinceLast) / 1000);
+          resetLimitBtn.textContent = `Жди ${formatTime(remaining)} до ${nextResetNum}-го обновления`;
+          resetLimitBtn.disabled = true;
+        } else {
+          resetLimitBtn.textContent = nextResetNum === 1 ? '🔄 Обновить лимит (бесплатно)' : `🔄 Обновить лимит (${nextResetNum}-е)`;
+          resetLimitBtn.disabled = false;
+        }
+      } else {
+        resetLimitBtn.textContent = '🔄 Обновить лимит (бесплатно)';
+        resetLimitBtn.disabled = false;
+      }
+      resetLimitBtn.style.display = 'block';
     }
 
     function checkDailyBonus() {
@@ -923,7 +930,7 @@
         }
       }
       loadLocalProgress();
-      applyProgress({balance: bc, hack_level: hackLevel, limit_level: limitLevel, today_mined: todayMined, mined_date: minedDate, streak: streak, last_claim: lastClaim, fields_unlocked: fieldsUnlocked, miner_level: minerLevel, last_miner_claim: lastMinerClaim, last_free_reset: lastFreeReset});
+      applyProgress({balance: bc, hack_level: hackLevel, limit_level: limitLevel, today_mined: todayMined, mined_date: minedDate, streak: streak, last_claim: lastClaim, fields_unlocked: fieldsUnlocked, reset_data: resetData, miner_level: minerLevel, last_miner_claim: lastMinerClaim});
       document.getElementById('loader').classList.add('hidden');
     })();
 
