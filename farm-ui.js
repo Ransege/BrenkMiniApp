@@ -25,18 +25,21 @@ function updateDailyMined() {
 
 function updateHackUpgrade() {
   const btn = document.getElementById('hack-upgrade');
-  const cost = hackCosts[window.game.hackLevel];
-  const nextTap = window.game.getPerTap(window.game.hackLevel + 1);
   if (window.game.hackLevel >= 10) {
     btn.innerHTML = "🔓 Максимальный уровень взлома достигнут!";
     btn.disabled = true;
-  } else if (window.game.bc < cost) {
+    return;
+  }
+  const cost = hackCosts[window.game.hackLevel];
+  const currentTap = window.game.getPerTap();
+  const nextTap = window.game.getPerTap(window.game.hackLevel + 1);
+  if (window.game.bc < cost) {
     btn.innerHTML = `🔓 Недостаточно BC (${cost.toLocaleString()} нужно)`;
     btn.disabled = true;
   } else {
     btn.innerHTML = `
       🔓 Уровень взлома: ${window.game.hackLevel} → ${window.game.hackLevel + 1}<br>
-      <small>За тап: ${window.game.getPerTap()} → ${nextTap} BC</small><br>
+      <small>За тап: ${currentTap} → ${nextTap} BC</small><br>
       <strong>Стоимость: ${cost.toLocaleString()} BC</strong>
     `;
     btn.disabled = false;
@@ -51,14 +54,15 @@ function updateLimitUpgrade() {
     return;
   }
   const cost = limitCosts[window.game.limitLevel + 1];
-  const nextLimit = window.game.getCurrentLimit() + limitIncreases[window.game.limitLevel + 1];
+  const currentLimit = window.game.getCurrentLimit();
+  const nextLimit = currentLimit + limitIncreases[window.game.limitLevel + 1];
   if (window.game.bc < cost) {
     btn.innerHTML = `⬆️ Недостаточно BC (${cost.toLocaleString()} нужно)`;
     btn.disabled = true;
   } else {
     btn.innerHTML = `
       ⬆️ Уровень лимита: ${window.game.limitLevel} → ${window.game.limitLevel + 1}<br>
-      <small>Лимит: ${window.game.getCurrentLimit().toLocaleString()} → ${nextLimit.toLocaleString()} BC</small><br>
+      <small>Лимит: ${currentLimit.toLocaleString()} → ${nextLimit.toLocaleString()} BC</small><br>
       <strong>Стоимость: ${cost.toLocaleString()} BC</strong>
     `;
     btn.disabled = false;
@@ -72,8 +76,13 @@ function updateMinerDisplay() {
   document.getElementById('pending-miner').textContent = pending.toLocaleString();
 
   const claimBtn = document.getElementById('claim-miner');
-  claimBtn.textContent = pending > 0 ? `Забрать ${pending.toLocaleString()} BC` : 'Ничего не накоплено';
-  claimBtn.disabled = pending === 0;
+  if (pending > 0) {
+    claimBtn.textContent = `Забрать ${pending.toLocaleString()} BC`;
+    claimBtn.disabled = false;
+  } else {
+    claimBtn.textContent = 'Ничего не накоплено';
+    claimBtn.disabled = true;
+  }
 
   const upgradeBtn = document.getElementById('miner-upgrade');
   if (window.game.minerLevel >= 5) {
